@@ -84,7 +84,7 @@ export function TrainV2Opening({ data, exportMode, started, onComplete }: Openin
       gsap.set(".h-train", { xPercent: 130 });
       gsap.set(".h-cue", { opacity: 0, y: 10 });
 
-      tl.to(".st-ann", { scale: 1.05, duration: 0.22, yoyo: true, repeat: 1, ease: "power1.inOut" }, C.chime)
+      tl.to(".st-ann", { scale: 1.05, duration: 0.22, yoyo: true, repeat: 1, ease: "power1.inOut" }, C.announce)
         // door slides open with warm light behind it; camera pushes in
         .to(".v2-door-glow", { opacity: 1, duration: 0.4 }, C.doorOpen)
         .to(".v2-door-leaf", { x: 25, duration: 0.7, ease: "power2.inOut" }, C.doorOpen + 0.1)

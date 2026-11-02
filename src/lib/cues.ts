@@ -38,17 +38,17 @@ export const TRAIN_CUES = {
 /* ------------------------------------------------------------------ v2 */
 
 export const TRAIN2_CUES = {
-  chime: 0.2,
-  announce: 2.4,
-  enter: 3.0,
-  horn: 3.5,
-  stop: 11.0,
-  doorOpen: 11.4,
-  flood: 11.9,
-  hero: 12.8,
-  sign: 13.1,
-  date: 14.2,
-  duration: 16.5,
+  enter: 0.6,
+  horn: 0.9,
+  chime: 2.8,
+  announce: 4.6,
+  stop: 10.0,
+  doorOpen: 13.8,
+  flood: 14.3,
+  hero: 15.2,
+  sign: 15.5,
+  date: 16.6,
+  duration: 18.5,
 } as const;
 
 export const NIKAH2_CUES = {

@@ -579,8 +579,6 @@ function train2Sfx(omit: string[] = []): StereoBuffer {
   const C = TRAIN2_CUES;
   const buf = alloc(C.duration + 4);
   const rng = mulberry32(61);
-  // platform ambience
-  noise(buf, 0, C.duration, 0.05, 0, rng, { attack: 1, release: 2, lpFrom: 900 });
   // three-tone station chime before the announcement
   if (!omit.includes("chime"))
     [76, 72, 67].forEach((m, i) =>
@@ -605,7 +603,6 @@ function train2Sfx(omit: string[] = []): StereoBuffer {
     noise(buf, t + 0.09 + p * 0.1, 0.035, g * 0.8, -0.2, rng, { lpFrom: 3500, hp: 600, release: 0.03 });
     t += 0.32 + p * p * 0.9;
   }
-  noise(buf, C.enter, C.stop - C.enter + 0.4, 0.12, 0, rng, { attack: 1, release: 0.6, lpFrom: 250, lpTo: 150 });
   // brake squeal + air release at the stop
   tone(buf, C.stop - 1.6, 2350, 1.7, 0.012, 0.3, { attack: 0.4, release: 0.5, vibrato: 0.01, vibratoRate: 9 });
   noise(buf, C.stop, 1.2, 0.18, 0, rng, { attack: 0.02, release: 0.9, lpFrom: 6000, hp: 1500 });

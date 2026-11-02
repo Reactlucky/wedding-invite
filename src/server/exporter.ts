@@ -123,7 +123,7 @@ async function run(job: ExportJob, origin: string) {
     const samples = sounds.samples.map((s) => ({ ...s, file: mediaPath(s.src) })).filter((s) => s.file);
     const omit = samples.map((s) => s.key);
     const wavPath = path.join(workDir, "audio.wav");
-    await writeFile(wavPath, encodeWav(renderOpeningMix(job.template, duration, !musicFile, sounds.music.volume, omit)));
+    await writeFile(wavPath, encodeWav(renderOpeningMix(job.template, duration, !musicFile && sounds.bed, sounds.music.volume, omit)));
 
     const out = path.join(workDir, `${job.template}-opening-${job.format}.mp4`);
     const args = ["-y", "-f", "image2pipe", "-framerate", String(FPS), "-c:v", "mjpeg", "-i", "pipe:0", "-i", wavPath];

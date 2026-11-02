@@ -108,7 +108,7 @@ export class AudioEngine {
     const r = await renderInWorker(this.template, this.sounds.omit);
     if (!this.ctx) return;
     const now = this.ctx.currentTime + 0.02;
-    if (!this.custom) {
+    if (!this.custom && this.sounds.bed) {
       const bedGain = this.ctx.createGain();
       bedGain.gain.value = 0.75 * this.sounds.music.volume;
       bedGain.connect(this.master);
