@@ -8,7 +8,7 @@ import { clamp } from "@/lib/random";
 import type { InvitationData } from "@/lib/types";
 import { useCinematicTimeline, type OpeningProps } from "../../shared/useCinematicTimeline";
 import { ConfettiField } from "../shared/confetti";
-import { Coach, Locomotive, StationLedBoard, StationScene } from "./art";
+import { Coach, Locomotive, StationLedBoard, StationScene, WHEEL_R } from "./art";
 import { TrainV2Hero } from "./TrainV2Hero";
 
 const CAR_RATIO = 400 / 120;
@@ -114,7 +114,7 @@ export function TrainV2Opening({ data, exportMode, started, onComplete }: Openin
       const bob = Math.sin(t * 19) * 0.9 * speed;
       if (strip.current) {
         strip.current.style.transform = `translate3d(${x.toFixed(2)}px, ${bob.toFixed(2)}px, 0)`;
-        const r = (8 / 120) * Hpx;
+        const r = (WHEEL_R / 120) * Hpx;
         strip.current.style.setProperty("--wheel", `${(-((x0 - x) / r) * 57.2958) % 360}deg`);
       }
       // LED marquee scrolls at a fixed rate

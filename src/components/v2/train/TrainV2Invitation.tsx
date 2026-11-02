@@ -65,8 +65,8 @@ function PhotoCoach({ photos, labels, board, number, onOpen }: { photos: (Photo 
       <div className="flex justify-between px-8">
         {[0, 1].map((k) => (
           <div key={k} className="flex gap-2">
-            <span className="h-4 w-4 -translate-y-1 rounded-full border-2 border-[#6d6a66] bg-[#2b2a29]" />
-            <span className="h-4 w-4 -translate-y-1 rounded-full border-2 border-[#6d6a66] bg-[#2b2a29]" />
+            <span className="h-6 w-6 -translate-y-1.5 rounded-full border-[3px] border-[#6d6a66] bg-[#2b2a29]" />
+            <span className="h-6 w-6 -translate-y-1.5 rounded-full border-[3px] border-[#6d6a66] bg-[#2b2a29]" />
           </div>
         ))}
       </div>

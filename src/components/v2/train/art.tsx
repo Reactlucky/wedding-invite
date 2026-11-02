@@ -8,6 +8,9 @@ import { Led } from "../shared/primitives";
 const WINDOW = "#26313c";
 const ROOF = "#9b9a97";
 const UNDER = "#3a3836";
+/** Wheel size in the 400×120 car artwork (the opening uses this to roll them at the right speed). */
+export const WHEEL_R = 12.5;
+const WHEEL_CY = 107;
 
 const wheelStyle: CSSProperties = { transform: "rotate(var(--wheel, 0deg))", transformBox: "fill-box", transformOrigin: "center" };
 
@@ -23,13 +26,13 @@ function Wheel({ cx, cy, r }: { cx: number; cy: number; r: number }) {
 }
 
 function Bogie({ x, wheels }: { x: number; wheels: number }) {
-  const gap = 19;
+  const gap = 27;
   const xs = Array.from({ length: wheels }, (_, i) => x + (i - (wheels - 1) / 2) * gap);
   return (
     <g>
-      <rect x={xs[0] - 12} y="96" width={xs[xs.length - 1] - xs[0] + 24} height="7" rx="2" fill={UNDER} />
+      <rect x={xs[0] - 16} y="95" width={xs[xs.length - 1] - xs[0] + 32} height="8" rx="2" fill={UNDER} />
       {xs.map((wx) => (
-        <Wheel key={wx} cx={wx} cy={109} r={8} />
+        <Wheel key={wx} cx={wx} cy={WHEEL_CY} r={WHEEL_R} />
       ))}
     </g>
   );
