@@ -33,7 +33,40 @@ export const TRAIN_CUES = {
   duration: 14.5,
 } as const;
 
+
+
+/* ------------------------------------------------------------------ v2 */
+
+export const TRAIN2_CUES = {
+  chime: 0.3,
+  announce: 0.5,
+  enter: 1.2,
+  horn: 1.5,
+  stop: 9.6,
+  doorOpen: 10.0,
+  flood: 10.5,
+  hero: 11.4,
+  sign: 11.7,
+  date: 12.8,
+  duration: 15,
+} as const;
+
+export const NIKAH2_CUES = {
+  chime: 0.2,
+  title: 0.5,
+  pan: 1.2,
+  panEnd: 8.6,
+  doorsOpen: 9.0,
+  flood: 9.8,
+  hero: 10.6,
+  plaque: 10.9,
+  date: 12.0,
+  duration: 14,
+} as const;
+
 export const OPENING_DURATION = {
   nikah: NIKAH_CUES.duration,
   train: TRAIN_CUES.duration,
+  nikah2: NIKAH2_CUES.duration,
+  train2: TRAIN2_CUES.duration,
 } as const;

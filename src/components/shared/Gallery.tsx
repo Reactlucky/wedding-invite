@@ -129,7 +129,7 @@ export function Gallery({ photos, template }: { photos: Photo[]; template: Templ
     : [0, 1, 2, 3, 4, 5].map((n) => ({ kind: "art", n }));
   const [open, setOpen] = useState<number | null>(null);
 
-  const Art = template === "nikah" ? NikahArt : TrainArt;
+  const Art = template.startsWith("nikah") ? NikahArt : TrainArt;
   const renderItem = (it: Item, big = false) =>
     it.kind === "photo" ? (
       // user uploads are pre-compressed to WebP client-side, so a plain lazy <img> is optimal here
@@ -183,7 +183,7 @@ export function Gallery({ photos, template }: { photos: Photo[]; template: Templ
   );
 }
 
-function Lightbox({
+export function Lightbox({
   index,
   count,
   onIndex,

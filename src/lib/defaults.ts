@@ -1,5 +1,5 @@
 import { THEME_PRESETS } from "./themes";
-import type { InvitationData } from "./types";
+import { TEMPLATES, type InvitationData } from "./types";
 
 export const DEFAULT_INVITATION: InvitationData = {
   bride: "Ayesha",
@@ -13,6 +13,8 @@ export const DEFAULT_INVITATION: InvitationData = {
   city: "Hyderabad",
   message:
     "With the blessings of Allah and the love of our families, we joyfully invite you to celebrate the beginning of our forever.",
+  story:
+    "We met over a borrowed umbrella on a rainy evening in Hyderabad. Years of chai, long walks and longer conversations later, two families became one, and the journey to forever begins here.",
   hashtag: "#ZayanWedsAyesha",
   rsvpBy: "2027-01-20",
   events: [
@@ -49,6 +51,8 @@ export const DEFAULT_INVITATION: InvitationData = {
   theme: {
     nikah: { preset: "emerald", palette: THEME_PRESETS.nikah[0].palette },
     train: { preset: "sunset", palette: THEME_PRESETS.train[0].palette },
+    nikah2: { preset: "ivory-emerald", palette: THEME_PRESETS.nikah2[0].palette },
+    train2: { preset: "classic", palette: THEME_PRESETS.train2[0].palette },
   },
   updatedAt: 0,
 };
@@ -63,10 +67,9 @@ export function normalizeInvitation(input: Partial<InvitationData> | null | unde
     events: Array.isArray(input.events) ? input.events : d.events,
     photos: Array.isArray(input.photos) ? input.photos : d.photos,
     music: { ...d.music, ...(input.music ?? {}) },
-    theme: {
-      nikah: { ...d.theme.nikah, ...(input.theme?.nikah ?? {}) },
-      train: { ...d.theme.train, ...(input.theme?.train ?? {}) },
-    },
+    theme: Object.fromEntries(
+      TEMPLATES.map((t) => [t, { ...d.theme[t], ...(input.theme?.[t] ?? {}) }]),
+    ) as InvitationData["theme"],
   };
 }
 

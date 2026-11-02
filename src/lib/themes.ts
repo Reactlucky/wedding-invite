@@ -95,6 +95,41 @@ export const THEME_PRESETS: Record<TemplateId, ThemePreset[]> = {
       },
     },
   ],
+  // v2: flat illustrated templates on light backgrounds (base = page background)
+  train2: [
+    {
+      id: "classic",
+      name: "Classic Express",
+      palette: { deep: "#2b0f0f", base: "#f6efe3", accent: "#f2c230", accentLight: "#ffb21a", ink: "#3a2a22", secondary: "#c4242f" },
+    },
+    {
+      id: "rajdhani",
+      name: "Royal Blue",
+      palette: { deep: "#0f1b33", base: "#f3f0e8", accent: "#f2c230", accentLight: "#ffb21a", ink: "#24324a", secondary: "#1f4e9c" },
+    },
+    {
+      id: "heritage",
+      name: "Heritage Green",
+      palette: { deep: "#13261d", base: "#f4efe2", accent: "#e9b949", accentLight: "#ffb21a", ink: "#2c3a2f", secondary: "#1f6b4a" },
+    },
+  ],
+  nikah2: [
+    {
+      id: "ivory-emerald",
+      name: "Ivory & Emerald",
+      palette: { deep: "#123b30", base: "#f6f0e4", accent: "#c99a3d", accentLight: "#e8c77a", ink: "#33291f", secondary: "#1f5c4a" },
+    },
+    {
+      id: "rose",
+      name: "Rose Garden",
+      palette: { deep: "#4a1426", base: "#f8eee9", accent: "#c9974a", accentLight: "#ecc58a", ink: "#3b2328", secondary: "#8c2f4b" },
+    },
+    {
+      id: "teal",
+      name: "Peacock Teal",
+      palette: { deep: "#0f3338", base: "#eff3ef", accent: "#c49a45", accentLight: "#e6c27c", ink: "#22343a", secondary: "#1d5f6b" },
+    },
+  ],
 };
 
 export function paletteToCss(p: Palette): React.CSSProperties {

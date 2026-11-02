@@ -7,7 +7,7 @@ import { compressImage } from "@/lib/image";
 import { uid } from "@/lib/random";
 import { broadcast, editorHeaders } from "@/lib/sync";
 import { THEME_PRESETS } from "@/lib/themes";
-import type { EventItem, InvitationData, Palette, Rsvp, TemplateId } from "@/lib/types";
+import { TEMPLATES, TEMPLATE_INFO, type EventItem, type InvitationData, type Palette, type Rsvp, type TemplateId } from "@/lib/types";
 import { Area, Field, Panel, Segmented, Text, inputCls } from "./fields";
 
 type SaveState = "idle" | "dirty" | "saving" | "saved" | "error";
@@ -142,10 +142,7 @@ export function Editor() {
               setTemplate(t);
               setFrameKey((k) => k + 1);
             }}
-            options={[
-              ["nikah", "Nikah"],
-              ["train", "Train"],
-            ]}
+            options={TEMPLATES.map((t) => [t, TEMPLATE_INFO[t].label] as [TemplateId, string])}
           />
         </div>
       </header>
@@ -190,6 +187,7 @@ export function Editor() {
             <Text label="Address" value={data.address} onChange={set("address")} hint="Used for Google Maps & directions" />
             <Text label="City" value={data.city} onChange={set("city")} />
             <Area label="Invitation message" value={data.message} onChange={set("message")} rows={4} />
+            <Area label="Our story (v2 templates)" value={data.story} onChange={set("story")} rows={4} />
             <div className="grid grid-cols-2 gap-3">
               <Text label="Hashtag" value={data.hashtag} onChange={set("hashtag")} />
               <Text label="RSVP by" type="date" value={data.rsvpBy} onChange={set("rsvpBy")} />
@@ -208,7 +206,7 @@ export function Editor() {
             <MusicEditor data={data} update={update} />
           </Panel>
 
-          <Panel title={`Colour theme · ${template === "nikah" ? "Nikah" : "Train"}`} icon="🎨">
+          <Panel title={`Colour theme · ${TEMPLATE_INFO[template].label}`} icon="🎨">
             <ThemeEditor data={data} template={template} update={update} />
           </Panel>
 
@@ -241,11 +239,11 @@ export function Editor() {
             <button type="button" onClick={() => setFrameKey((k) => k + 1)} className="rounded-lg bg-white/[.08] px-3 py-1.5 text-xs">
               Reload
             </button>
-            <a href={`/${template}`} target="_blank" rel="noreferrer" className="ml-auto text-xs text-amber-200 underline-offset-4 hover:underline">
-              Open /{template} ↗
+            <a href={TEMPLATE_INFO[template].route} target="_blank" rel="noreferrer" className="ml-auto text-xs text-amber-200 underline-offset-4 hover:underline">
+              Open {TEMPLATE_INFO[template].route} ↗
             </a>
           </div>
-          <DevicePreview key={`${template}-${frameKey}`} src={`/${template}?preview=1`} device={device} />
+          <DevicePreview key={`${template}-${frameKey}`} src={`${TEMPLATE_INFO[template].route}?preview=1`} device={device} />
         </section>
       </div>
     </div>
@@ -513,7 +511,7 @@ function ThemeEditor({ data, template, update }: { data: InvitationData; templat
           </label>
         ))}
       </div>
-      <p className="text-xs text-white/40">Switch between Nikah and Train at the top to theme each template.</p>
+      <p className="text-xs text-white/40">Switch templates at the top to theme each one separately.</p>
     </div>
   );
 }
@@ -564,7 +562,7 @@ function ExportPanel({ template, flush }: { template: TemplateId; flush: () => P
   return (
     <div className="grid gap-4">
       <p className="text-xs leading-relaxed text-white/50">
-        Renders the {template === "nikah" ? "Nikah" : "Train"} opening frame by frame in headless Chrome at 30fps with the soundtrack, encoded as H.264 MP4. Takes about 1–3 minutes.
+        Renders the {TEMPLATE_INFO[template].label} opening frame by frame in headless Chrome at 30fps with the soundtrack, encoded as H.264 MP4. Takes about 1–3 minutes.
       </p>
       <Segmented
         value={format}

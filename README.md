@@ -7,6 +7,8 @@ Two original, fully animated invitation templates with an editor and MP4 export.
 | `/` | Template picker |
 | `/nikah` | **Luxury Nikah**: an emerald-and-gold mehrab gateway draws itself in gold, then lanterns descend, the Bismillah reveals right-to-left, carved doors swing open in 3D, the camera flies through the light and the couple's names are revealed |
 | `/train` | **Royal Train Journey**: a Three.js sunset station in fog. A steam locomotive (with your monogram) arrives toward the camera and the steam engulfs the screen. Names flip onto a split-flap departure board, then a dramatic date reveal and a stamped boarding ticket |
+| `/v2/nikah` | **Nikah v2 (illustrated)**: flat cream-and-emerald courtyard, an arcade pan to a domed gate, and a swinging plaque with rose petals. The invitation has arch-window portraits, an emerald countdown, a lantern-on-a-chain schedule, an arcade gallery and a 3-step RSVP |
+| `/v2/train` | **Train v2 (Wedding Express)**: flat illustrated station with a dot-matrix LED board, Hindi/English announcement and a city nameboard. The train pulls in, a coach door glows open, and confetti falls on a yellow signboard. The invitation has coach-window photos, an LED departure-board countdown, a route story, a timetable on a vertical track, a coach gallery, a "Last stop" venue sign, hashtag copy and a 3-step RSVP |
 | `/editor` | Studio: names, date, venue, events, photos, music, colour theme, live preview, MP4 export, RSVP inbox |
 
 URL flags: `?view=invitation` skips straight to the invitation, and `?preview=1` is used by the editor iframe. `?export=1` is the deterministic render mode used by the exporter.
@@ -40,6 +42,7 @@ src/
       particles.ts           deterministic star / gold-dust / burst particles
       Countdown, Sections (events, map), Gallery (+lightbox), RsvpForm, useReveal (ScrollTrigger)
     nikah/                   SVG mehrab, doors, lanterns, girih patterns, opening, invitation
+    v2/                      v2 templates (shared: confetti, LED, RSVP stepper, schedule scroll; nikah/, train/)
     train/                   TrainScene.ts (Three.js), split-flap board, ticket, opening, invitation
     editor/                  studio UI
   server/
@@ -58,3 +61,7 @@ src/
 - `.data/` (invitation JSON, uploads, RSVPs, exports) must be on persistent disk. On serverless hosts, replace `server/store.ts` with a database and object storage, and run the exporter on a worker with Chrome and ffmpeg.
 - It's single-invitation for now. For multi-tenant use, key `store.ts` by a slug and add `/[slug]/nikah`-style routes.
 - Only upload music you have the rights to use.
+
+## Versions
+
+`v1` is a git tag holding the original two templates. The v2 templates were added alongside them and don't change any v1 route or visual. All four templates share the editor, data, RSVP inbox and MP4 export. Pick the template at the top of the editor; each one has its own colour theme.

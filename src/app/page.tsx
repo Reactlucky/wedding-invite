@@ -17,6 +17,22 @@ const templates = [
     bg: "linear-gradient(to bottom, #160a08, #7a2e1a 60%, #ffb35c)",
     accent: "#ffb35c",
   },
+  {
+    href: "/v2/nikah",
+    name: "Nikah v2 · Illustrated",
+    blurb: "A flat illustrated courtyard with a marigold garland. The camera pans along an arcade of arches to a domed gateway, then rose petals fall as the plaque swings in.",
+    palette: ["#f6f0e4", "#1f5c4a", "#c99a3d", "#e8c77a"],
+    bg: "linear-gradient(to bottom, #f6f0e4, #e8d2ad 70%, #1f5c4a)",
+    accent: "#fff3d6",
+  },
+  {
+    href: "/v2/train",
+    name: "Train v2 · Wedding Express",
+    blurb: "A station with an LED departure board and a platform announcement. The train pulls in, a coach door glows open, and your names appear on a yellow station sign.",
+    palette: ["#f6efe3", "#c4242f", "#f2c230", "#ffb21a"],
+    bg: "linear-gradient(to bottom, #f6efe3, #f3d6b4 55%, #c4242f)",
+    accent: "#fff3d6",
+  },
 ];
 
 export default function Home() {

@@ -6,7 +6,7 @@ import { mkdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import puppeteer, { type Browser } from "puppeteer-core";
 import { encodeWav, renderOpeningMix } from "@/lib/audio/score";
-import type { TemplateId } from "@/lib/types";
+import { TEMPLATE_INFO, type TemplateId } from "@/lib/types";
 import { EXPORT_DIR, UPLOAD_DIR, getInvitation } from "./store";
 
 export type ExportFormat = "portrait" | "landscape" | "square";
@@ -104,7 +104,7 @@ async function run(job: ExportJob, origin: string) {
     const page = await browser.newPage();
     // Lay out like a real phone/laptop screen at 2x density: same output pixels, correct composition, crisper text.
     await page.setViewport({ width: width / 2, height: height / 2, deviceScaleFactor: 2 });
-    await page.goto(`${origin}/${job.template}?export=1`, { waitUntil: "networkidle0", timeout: 120_000 });
+    await page.goto(`${origin}${TEMPLATE_INFO[job.template].route}?export=1`, { waitUntil: "networkidle0", timeout: 120_000 });
     await page.waitForFunction("window.__opening && window.__opening.ready === true", { timeout: 120_000 });
     const duration = (await page.evaluate("window.__opening.duration")) as number;
     const total = Math.round(duration * FPS);

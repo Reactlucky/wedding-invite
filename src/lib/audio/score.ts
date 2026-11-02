@@ -7,7 +7,7 @@
  *   - bed: a seamlessly looping music bed (LOOP_SECONDS long)
  *   - sfx: sound design locked to the opening's cue sheet
  */
-import { NIKAH_CUES, TRAIN_CUES } from "../cues";
+import { NIKAH2_CUES, NIKAH_CUES, TRAIN2_CUES, TRAIN_CUES } from "../cues";
 import { mulberry32 } from "../random";
 import type { TemplateId } from "../types";
 
@@ -497,19 +497,196 @@ function trainSfx(): StereoBuffer {
   return buf;
 }
 
+/* ----------------------------------------------------------------------- v2 */
+
+/** Reedy double-reed lead (shehnai-like): bright harmonics, vibrato, meend glide from the previous note. */
+function reed(buf: StereoBuffer, start: number, freq: number, dur: number, amp: number, pan: number, from = freq) {
+  const [gl, gr] = panGains(pan);
+  const s0 = Math.floor(start * SR);
+  const n = Math.floor(dur * SR);
+  const harm = [1, 0.75, 0.6, 0.42, 0.3, 0.2, 0.12, 0.07];
+  const ph = new Float64Array(harm.length);
+  for (let i = 0; i < n; i++) {
+    const t = i / SR;
+    const glide = Math.min(1, t / 0.09);
+    const f = (from + (freq - from) * glide) * (1 + 0.011 * Math.sin(TAU * 5.6 * t) * Math.min(1, t / 0.25));
+    const env = Math.min(1, t / 0.04) * Math.min(1, (dur - t) / 0.08);
+    let v = 0;
+    for (let h = 0; h < harm.length; h++) {
+      ph[h] += (TAU * f * (h + 1)) / SR;
+      v += Math.sin(ph[h]) * harm[h];
+    }
+    write(buf, s0 + i, v * amp * env * 0.35, gl, gr);
+  }
+}
+
+function dholak(buf: StereoBuffer, t: number, kind: "dha" | "na" | "ge" | "ti", amp: number, rng: () => number) {
+  if (kind === "dha" || kind === "ge") tone(buf, t, kind === "dha" ? 95 : 120, 0.4, amp, -0.1, { attack: 0.002, release: 0.1, decay: 8, glide: 0.5 });
+  if (kind === "dha" || kind === "na") tone(buf, t, 340, 0.18, amp * 0.5, 0.15, { attack: 0.001, release: 0.06, decay: 22, harmonics: [1, 0.4, 0.2] });
+  noise(buf, t, kind === "ti" ? 0.04 : 0.07, amp * (kind === "ti" ? 0.35 : 0.22), 0.1, rng, { lpFrom: kind === "ti" ? 7000 : 2500, hp: kind === "ti" ? 2500 : 300, release: 0.05 });
+}
+
+function tanpura(buf: StereoBuffer, L: number, root: number, rng: () => number) {
+  const notes = [root - 5, root, root, root - 12];
+  for (let t = 0, k = 0; t < L; t += 0.95, k++) pluck(buf, t, mtof(notes[k % 4]), 3, 0.06, (k % 2 ? 0.3 : -0.3), rng, 0.6, 0.9985);
+}
+
+function train2Bed(): StereoBuffer {
+  const L = LOOP_SECONDS;
+  const buf = alloc(L + 6);
+  const rng = mulberry32(51);
+  tanpura(buf, L, 50, rng);
+  // dholak: 120 bpm, 8th-note groove
+  const groove: ("dha" | "na" | "ge" | "ti" | null)[] = ["dha", "ti", "na", "ge", "dha", "ti", "na", "ti"];
+  for (let i = 0; i < L / 0.25; i++) {
+    const k = groove[i % groove.length];
+    if (k) dholak(buf, i * 0.25, k, i % 8 === 0 ? 0.16 : 0.1, rng);
+  }
+  // shehnai melody in Khamaj on D (D E F# G A B C D)
+  const D4 = 62;
+  const scale = [0, 2, 4, 5, 7, 9, 10, 12, 14];
+  const phrases = [
+    [4, 5, 6, 5, 4, 3, 2, 3],
+    [4, 4, 5, 7, 6, 5, 4, 2],
+    [2, 3, 4, 5, 4, 3, 1, 0],
+    [7, 8, 7, 6, 5, 4, 3, 4],
+  ];
+  let t = 0.5;
+  let prev = mtof(D4);
+  for (let rep = 0; rep < 2; rep++) {
+    for (const ph of phrases) {
+      for (let k = 0; k < ph.length; k++) {
+        const f = mtof(D4 + scale[ph[k]]);
+        const dur = k === ph.length - 1 ? 1.4 : 0.42;
+        reed(buf, t, f, dur, 0.08, 0.1, prev);
+        prev = f;
+        t += k === ph.length - 1 ? 1.5 : 0.5;
+      }
+      t += 0.0;
+    }
+  }
+  // soft harmonium pad underneath
+  [[50, 54, 57], [48, 55, 60], [55, 59, 62], [57, 61, 64]].forEach((c, i) =>
+    c.forEach((m, v) => pad(buf, i * 8, mtof(m), 9, 0.03, -0.3 + v * 0.3, 1100)),
+  );
+  reverb(buf, 0.22, 1);
+  const out = wrap(buf, L);
+  normalize(out, 0.7);
+  return out;
+}
+
+function train2Sfx(): StereoBuffer {
+  const C = TRAIN2_CUES;
+  const buf = alloc(C.duration + 4);
+  const rng = mulberry32(61);
+  // platform ambience
+  noise(buf, 0, C.duration, 0.05, 0, rng, { attack: 1, release: 2, lpFrom: 900 });
+  // three-tone station chime before the announcement
+  [76, 72, 67].forEach((m, i) =>
+    tone(buf, C.chime + i * 0.38, mtof(m), 2.2, 0.12, 0, { attack: 0.003, release: 1, decay: 1.6, harmonics: [1, 0, 0.35, 0, 0.12] }),
+  );
+  // electric locomotive horn
+  const horn = (t0: number, dur: number, amp: number) => {
+    [330, 415.3].forEach((f, i) =>
+      tone(buf, t0, f, dur, amp, i ? 0.4 : 0.2, { attack: 0.06, release: 0.2, harmonics: [1, 0.6, 0.45, 0.3, 0.2, 0.1], vibrato: 0.002 }),
+    );
+  };
+  horn(C.horn, 1.3, 0.07);
+  horn(C.horn + 1.7, 0.45, 0.08);
+  // rail joints: clickety-clack, slowing as the train brakes
+  let t = C.enter + 0.3;
+  while (t < C.stop) {
+    const p = (t - C.enter) / (C.stop - C.enter);
+    const g = 0.2 * Math.min(1, (t - C.enter) * 1.5) * (1 - p * 0.5);
+    noise(buf, t, 0.035, g, 0.2, rng, { lpFrom: 3500, hp: 600, release: 0.03 });
+    noise(buf, t + 0.09 + p * 0.1, 0.035, g * 0.8, -0.2, rng, { lpFrom: 3500, hp: 600, release: 0.03 });
+    t += 0.32 + p * p * 0.9;
+  }
+  noise(buf, C.enter, C.stop - C.enter + 0.4, 0.12, 0, rng, { attack: 1, release: 0.6, lpFrom: 250, lpTo: 150 });
+  // brake squeal + air release at the stop
+  tone(buf, C.stop - 1.6, 2350, 1.7, 0.012, 0.3, { attack: 0.4, release: 0.5, vibrato: 0.01, vibratoRate: 9 });
+  noise(buf, C.stop, 1.2, 0.18, 0, rng, { attack: 0.02, release: 0.9, lpFrom: 6000, hp: 1500 });
+  // sliding door + light swell
+  noise(buf, C.doorOpen, 0.6, 0.12, 0, rng, { attack: 0.05, release: 0.3, lpFrom: 1200, lpTo: 2600 });
+  noise(buf, C.flood - 0.4, 1.4, 0.18, 0, rng, { attack: 0.1, release: 0.6, lpFrom: 400, lpTo: 7000, shape: (k) => k * k });
+  for (let i = 0; i < 10; i++)
+    tone(buf, C.flood + i * 0.06, mtof(74 + [0, 2, 4, 7, 9, 12, 14, 16, 19, 21][i]), 2, 0.035, -0.5 + i * 0.1, { attack: 0.003, release: 1, decay: 1.6 });
+  // confetti pop + dholak flourish as the sign drops
+  noise(buf, C.hero, 0.25, 0.25, 0, rng, { lpFrom: 5000, hp: 800, release: 0.2 });
+  (["dha", "na", "dha", "dha"] as const).forEach((k, i) => dholak(buf, C.sign + i * 0.13, k, 0.22, rng));
+  tone(buf, C.date, mtof(81), 2.5, 0.06, 0.2, { attack: 0.003, release: 1.2, decay: 1.4, harmonics: [1, 0, 0.3] });
+  reverb(buf, 0.25, 1.1);
+  softClip(buf);
+  return buf;
+}
+
+function nikah2Bed(): StereoBuffer {
+  const L = LOOP_SECONDS;
+  const buf = alloc(L + 6);
+  const rng = mulberry32(71);
+  // harmonium chords (reedy pads), 4 s each: Dm  Gm  C  F | Bb  Gm  A  Dm
+  const chords = [
+    [50, 53, 57], [55, 58, 62], [48, 52, 55], [53, 57, 60],
+    [46, 50, 53], [55, 58, 62], [57, 61, 64], [50, 53, 57],
+  ];
+  chords.forEach((c, i) => c.forEach((m, v) => pad(buf, i * 4, mtof(m), 5, 0.045, -0.3 + v * 0.3, 1300)));
+  // rubab-like plucked arpeggios
+  chords.forEach((c, i) => {
+    const arp = [c[0] + 12, c[1] + 12, c[2] + 12, c[1] + 12, c[2] + 12, c[0] + 24, c[2] + 12, c[1] + 12];
+    arp.forEach((m, k) => pluck(buf, i * 4 + k * 0.5, mtof(m), 1.6, 0.12, k % 2 ? 0.35 : -0.25, rng, 0.55));
+  });
+  // soft daf
+  for (let b = 0; b < L / 0.5; b++) {
+    if (b % 4 === 0) tone(buf, b * 0.5, 72, 0.4, 0.1, 0, { attack: 0.002, release: 0.1, decay: 9, glide: 0.5 });
+    if (b % 4 === 3) noise(buf, b * 0.5 + 0.25, 0.06, 0.03, 0.2, rng, { lpFrom: 5000, hp: 1500, release: 0.05 });
+  }
+  reverb(buf, 0.35, 1.1);
+  const out = wrap(buf, L);
+  normalize(out, 0.68);
+  return out;
+}
+
+function nikah2Sfx(): StereoBuffer {
+  const C = NIKAH2_CUES;
+  const buf = alloc(C.duration + 4);
+  const rng = mulberry32(81);
+  noise(buf, 0, C.duration, 0.04, 0, rng, { attack: 1.5, release: 2, lpFrom: 700 });
+  [79, 83, 86, 91].forEach((m, i) =>
+    tone(buf, C.chime + i * 0.14, mtof(m), 2.4, 0.05, -0.4 + i * 0.25, { attack: 0.003, release: 1.2, decay: 1.5, harmonics: [1, 0, 0.3] }),
+  );
+  // wind chimes drifting during the courtyard pan
+  const cr = mulberry32(9);
+  for (let t = C.pan; t < C.panEnd; t += 0.35 + cr() * 0.6) {
+    tone(buf, t, mtof(84 + [0, 3, 5, 7, 10, 12][Math.floor(cr() * 6)]), 1.8, 0.022, cr() * 1.6 - 0.8, { attack: 0.002, release: 1, decay: 2 });
+  }
+  noise(buf, C.pan, C.panEnd - C.pan, 0.06, 0, rng, { attack: 1.5, release: 1.5, lpFrom: 500, lpTo: 900 });
+  // doors: wooden thud + soft gong
+  noise(buf, C.doorsOpen, 0.5, 0.15, 0, rng, { attack: 0.01, release: 0.4, lpFrom: 300 });
+  [65, 98, 131.5, 177].forEach((f, i) => tone(buf, C.doorsOpen + 0.1, f, 4.5, 0.09 / (1 + i * 0.6), 0, { attack: 0.006, release: 2, decay: 0.7 + i * 0.2 }));
+  noise(buf, C.flood - 0.5, 1.5, 0.16, 0, rng, { attack: 0.1, release: 0.6, lpFrom: 400, lpTo: 6500, shape: (k) => k * k });
+  for (let i = 0; i < 12; i++)
+    tone(buf, C.flood + i * 0.05, mtof(74 + HIJAZ[i % HIJAZ.length]), 2.2, 0.035, -0.6 + i * 0.1, { attack: 0.003, release: 1, decay: 1.5 });
+  tone(buf, C.date, mtof(86), 3, 0.06, 0.2, { attack: 0.003, release: 1.4, decay: 1.1, harmonics: [1, 0, 0.4] });
+  reverb(buf, 0.4, 1.2);
+  softClip(buf);
+  return buf;
+}
+
 /* --------------------------------------------------------------------- api */
 
 const cache = new Map<string, StereoBuffer>();
+const BEDS: Record<TemplateId, () => StereoBuffer> = { nikah: nikahBed, train: trainBed, nikah2: nikah2Bed, train2: train2Bed };
+const SFX: Record<TemplateId, () => StereoBuffer> = { nikah: nikahSfx, train: trainSfx, nikah2: nikah2Sfx, train2: train2Sfx };
 
 export function renderBed(template: TemplateId): StereoBuffer {
   const key = `bed:${template}`;
-  if (!cache.has(key)) cache.set(key, template === "nikah" ? nikahBed() : trainBed());
+  if (!cache.has(key)) cache.set(key, BEDS[template]());
   return cache.get(key)!;
 }
 
 export function renderSfx(template: TemplateId): StereoBuffer {
   const key = `sfx:${template}`;
-  if (!cache.has(key)) cache.set(key, template === "nikah" ? nikahSfx() : trainSfx());
+  if (!cache.has(key)) cache.set(key, SFX[template]());
   return cache.get(key)!;
 }
 

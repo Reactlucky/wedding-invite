@@ -1,6 +1,14 @@
-export type TemplateId = "nikah" | "train";
+export type TemplateId = "nikah" | "train" | "nikah2" | "train2";
 
-export const TEMPLATES: TemplateId[] = ["nikah", "train"];
+export const TEMPLATES: TemplateId[] = ["nikah", "train", "nikah2", "train2"];
+
+/** Public route + label for each template (v1 routes are unchanged). */
+export const TEMPLATE_INFO: Record<TemplateId, { route: string; label: string }> = {
+  nikah: { route: "/nikah", label: "Nikah" },
+  train: { route: "/train", label: "Train" },
+  nikah2: { route: "/v2/nikah", label: "Nikah v2" },
+  train2: { route: "/v2/train", label: "Train v2" },
+};
 
 export interface Palette {
   /** darkest background / shadows */
@@ -61,6 +69,8 @@ export interface InvitationData {
   address: string;
   city: string;
   message: string;
+  /** "How we met" story (v2 templates) */
+  story: string;
   hashtag: string;
   rsvpBy: string;
   events: EventItem[];
