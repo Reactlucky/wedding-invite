@@ -48,6 +48,7 @@ export const DEFAULT_INVITATION: InvitationData = {
   ],
   photos: [],
   music: { src: null, volume: 0.7 },
+  sounds: {},
   theme: {
     nikah: { preset: "emerald", palette: THEME_PRESETS.nikah[0].palette },
     train: { preset: "sunset", palette: THEME_PRESETS.train[0].palette },
@@ -67,6 +68,7 @@ export function normalizeInvitation(input: Partial<InvitationData> | null | unde
     events: Array.isArray(input.events) ? input.events : d.events,
     photos: Array.isArray(input.photos) ? input.photos : d.photos,
     music: { ...d.music, ...(input.music ?? {}) },
+    sounds: input.sounds && typeof input.sounds === "object" ? input.sounds : {},
     theme: Object.fromEntries(
       TEMPLATES.map((t) => [t, { ...d.theme[t], ...(input.theme?.[t] ?? {}) }]),
     ) as InvitationData["theme"],

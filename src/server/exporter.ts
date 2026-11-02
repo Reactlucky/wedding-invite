@@ -7,6 +7,7 @@ import path from "node:path";
 import puppeteer, { type Browser } from "puppeteer-core";
 import { encodeWav, renderOpeningMix } from "@/lib/audio/score";
 import { TEMPLATE_INFO, type TemplateId } from "@/lib/types";
+import { resolveSounds } from "@/lib/sounds";
 import { EXPORT_DIR, UPLOAD_DIR, getInvitation } from "./store";
 
 export type ExportFormat = "portrait" | "landscape" | "square";
@@ -110,29 +111,43 @@ async function run(job: ExportJob, origin: string) {
     const total = Math.round(duration * FPS);
     job.frames = total;
 
-    // Soundtrack: original score + synced sound design, or the couple's own track + sound design
+    // Soundtrack: original score (or the uploaded music) + synced sound design + uploaded one-shots at their cues
     const invitation = await getInvitation();
-    const customFile = invitation.music.src?.startsWith("/api/media/")
-      ? path.join(UPLOAD_DIR, path.basename(invitation.music.src))
-      : null;
-    const useCustom = customFile && existsSync(customFile);
+    const sounds = resolveSounds(invitation, job.template);
+    const mediaPath = (src: string | null | undefined) => {
+      if (!src?.startsWith("/api/media/")) return null;
+      const f = path.join(UPLOAD_DIR, path.basename(src));
+      return existsSync(f) ? f : null;
+    };
+    const musicFile = mediaPath(sounds.music.src);
+    const samples = sounds.samples.map((s) => ({ ...s, file: mediaPath(s.src) })).filter((s) => s.file);
+    const omit = samples.map((s) => s.key);
     const wavPath = path.join(workDir, "audio.wav");
-    await writeFile(wavPath, encodeWav(renderOpeningMix(job.template, duration, !useCustom, invitation.music.volume)));
+    await writeFile(wavPath, encodeWav(renderOpeningMix(job.template, duration, !musicFile, sounds.music.volume, omit)));
 
     const out = path.join(workDir, `${job.template}-opening-${job.format}.mp4`);
     const args = ["-y", "-f", "image2pipe", "-framerate", String(FPS), "-c:v", "mjpeg", "-i", "pipe:0", "-i", wavPath];
-    if (useCustom) {
-      const v = invitation.music.volume.toFixed(2);
-      args.push(
-        "-i",
-        customFile!,
-        "-filter_complex",
-        `[2:a]volume=${v},atrim=0:${duration},afade=t=out:st=${Math.max(0, duration - 1.2)}:d=1.2[m];[1:a][m]amix=inputs=2:normalize=0[a]`,
-        "-map",
-        "0:v",
-        "-map",
-        "[a]",
+    const filters: string[] = [];
+    const mixIn = ["[1:a]"];
+    let input = 2;
+    if (musicFile) {
+      args.push("-i", musicFile);
+      filters.push(
+        `[${input}:a]volume=${sounds.music.volume.toFixed(2)},atrim=0:${duration},afade=t=out:st=${Math.max(0, duration - 1.2)}:d=1.2[m]`,
       );
+      mixIn.push("[m]");
+      input++;
+    }
+    samples.forEach((s, i) => {
+      args.push("-i", s.file!);
+      const ms = Math.round(s.at * 1000);
+      filters.push(`[${input}:a]aresample=44100,adelay=${ms}:all=1[s${i}]`);
+      mixIn.push(`[s${i}]`);
+      input++;
+    });
+    if (mixIn.length > 1) {
+      filters.push(`${mixIn.join("")}amix=inputs=${mixIn.length}:normalize=0:duration=first,alimiter=limit=0.95[a]`);
+      args.push("-filter_complex", filters.join(";"), "-map", "0:v", "-map", "[a]");
     } else {
       args.push("-map", "0:v", "-map", "1:a");
     }

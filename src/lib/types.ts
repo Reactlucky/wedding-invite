@@ -57,6 +57,12 @@ export interface MusicChoice {
   volume: number;
 }
 
+/** An uploaded audio file placed in a template's sound slot. */
+export interface SoundChoice {
+  src: string;
+  name?: string;
+}
+
 export interface InvitationData {
   bride: string;
   groom: string;
@@ -76,6 +82,8 @@ export interface InvitationData {
   events: EventItem[];
   photos: Photo[];
   music: MusicChoice;
+  /** Per-template sound overrides keyed "<template>.<slot>", e.g. "train2.horn" or "nikah2.music". */
+  sounds: Record<string, SoundChoice>;
   theme: Record<TemplateId, ThemeChoice>;
   updatedAt: number;
 }

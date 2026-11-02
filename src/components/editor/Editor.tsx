@@ -6,6 +6,7 @@ import { normalizeInvitation } from "@/lib/defaults";
 import { compressImage } from "@/lib/image";
 import { uid } from "@/lib/random";
 import { broadcast, editorHeaders } from "@/lib/sync";
+import { SOUND_SLOTS } from "@/lib/sounds";
 import { THEME_PRESETS } from "@/lib/themes";
 import { TEMPLATES, TEMPLATE_INFO, type EventItem, type InvitationData, type Palette, type Rsvp, type TemplateId } from "@/lib/types";
 import { Area, Field, Panel, Segmented, Text, inputCls } from "./fields";
@@ -204,6 +205,10 @@ export function Editor() {
 
           <Panel title="Background music" icon="🎵">
             <MusicEditor data={data} update={update} />
+          </Panel>
+
+          <Panel title={`Sounds · ${TEMPLATE_INFO[template].label}`} icon="🔔">
+            <TemplateSoundsEditor key={template} data={data} template={template} update={update} />
           </Panel>
 
           <Panel title={`Colour theme · ${TEMPLATE_INFO[template].label}`} icon="🎨">
@@ -467,6 +472,150 @@ function MusicEditor({ data, update }: { data: InvitationData; update: (fn: (d: 
         />
       </Field>
       <p className="text-xs text-white/40">The opening&apos;s sound effects play on top of your track. Only upload music you have the rights to use.</p>
+    </div>
+  );
+}
+
+/* ---------------------------------------------------------- template sounds */
+
+function SoundRow({
+  label,
+  hint,
+  value,
+  onUpload,
+  onClear,
+  extra,
+}: {
+  label: string;
+  hint: string;
+  value?: { src: string; name?: string };
+  onUpload: (f: File) => Promise<void>;
+  onClear: () => void;
+  extra?: React.ReactNode;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  return (
+    <div className="grid gap-2 rounded-xl border border-white/10 bg-white/[.02] p-3">
+      <div className="flex items-baseline justify-between gap-2">
+        <p className="text-sm font-medium">{label}</p>
+        <p className="text-[11px] text-white/40">{hint}</p>
+      </div>
+      {value ? (
+        <>
+          <audio src={value.src} controls className="h-9 w-full" />
+          <div className="flex items-center justify-between text-xs">
+            <span className="truncate text-white/60">♪ {value.name ?? "Uploaded sound"}</span>
+            <button type="button" onClick={onClear} className="text-red-300">
+              Remove (use built-in)
+            </button>
+          </div>
+        </>
+      ) : (
+        <p className="text-xs text-white/40">Using the built-in original sound.</p>
+      )}
+      <div className="flex flex-wrap gap-2">
+        <label className="cursor-pointer rounded-lg bg-white/[.08] px-3 py-1.5 text-xs hover:bg-white/[.12]">
+          <input
+            type="file"
+            accept="audio/*"
+            className="sr-only"
+            onChange={async (e) => {
+              const f = e.target.files?.[0];
+              e.target.value = "";
+              if (!f) return;
+              setBusy(true);
+              setError(null);
+              try {
+                await onUpload(f);
+              } catch (err) {
+                setError(err instanceof Error ? err.message : "Upload failed");
+              }
+              setBusy(false);
+            }}
+          />
+          {busy ? "Uploading…" : value ? "Replace…" : "Upload audio…"}
+        </label>
+        {extra}
+      </div>
+      {error && <p className="text-xs text-red-300">{error}</p>}
+    </div>
+  );
+}
+
+function TemplateSoundsEditor({ data, template, update }: { data: InvitationData; template: TemplateId; update: (fn: (d: InvitationData) => InvitationData) => void }) {
+  const [gen, setGen] = useState<"idle" | "busy">("idle");
+  const [genError, setGenError] = useState<string | null>(null);
+  const [english, setEnglish] = useState(false);
+  const setSound = (slot: string, v: { src: string; name?: string } | null) =>
+    update((d) => {
+      const sounds = { ...d.sounds };
+      if (v) sounds[`${template}.${slot}`] = v;
+      else delete sounds[`${template}.${slot}`];
+      return { ...d, sounds };
+    });
+  const uploadTo = (slot: string) => async (f: File) => {
+    const { src, name } = await upload(f, f.name);
+    setSound(slot, { src, name });
+  };
+
+  async function generate() {
+    setGen("busy");
+    setGenError(null);
+    try {
+      const [a, b] = data.nameOrder === "groom-first" ? [data.groom, data.bride] : [data.bride, data.groom];
+      const res = await authedFetch("/api/announce", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ a, b, english }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error);
+      setSound("announce", json);
+    } catch (e) {
+      setGenError(e instanceof Error ? e.message : "Failed");
+    }
+    setGen("idle");
+  }
+
+  const slots = SOUND_SLOTS[template] ?? [];
+  return (
+    <div className="grid gap-3">
+      <SoundRow
+        label="Music for this template"
+        hint="Overrides the global music"
+        value={data.sounds[`${template}.music`]}
+        onUpload={uploadTo("music")}
+        onClear={() => setSound("music", null)}
+      />
+      {slots.map((slot) => (
+        <SoundRow
+          key={slot.key}
+          label={slot.label}
+          hint={`${slot.hint} · ${slot.at}s`}
+          value={data.sounds[`${template}.${slot.key}`]}
+          onUpload={uploadTo(slot.key)}
+          onClear={() => setSound(slot.key, null)}
+          extra={
+            slot.key === "announce" ? (
+              <>
+                <button type="button" disabled={gen === "busy"} onClick={generate} className="rounded-lg bg-amber-300 px-3 py-1.5 text-xs font-semibold text-black disabled:opacity-50">
+                  {gen === "busy" ? "Generating…" : "🎙 Generate with our names"}
+                </button>
+                <label className="flex items-center gap-1.5 text-xs text-white/60">
+                  <input type="checkbox" checked={english} onChange={(e) => setEnglish(e.target.checked)} className="accent-amber-300" />
+                  + English
+                </label>
+                {genError && <p className="w-full text-xs text-red-300">{genError}</p>}
+              </>
+            ) : undefined
+          }
+        />
+      ))}
+      <p className="text-xs leading-relaxed text-white/40">
+        Uploaded sounds play at their cue in the preview and the MP4 export. Only upload audio you have the rights to use; the announcement generator creates
+        an original one with your names using the Mac&apos;s Hindi voice.
+      </p>
     </div>
   );
 }

@@ -575,24 +575,27 @@ function train2Bed(): StereoBuffer {
   return out;
 }
 
-function train2Sfx(): StereoBuffer {
+function train2Sfx(omit: string[] = []): StereoBuffer {
   const C = TRAIN2_CUES;
   const buf = alloc(C.duration + 4);
   const rng = mulberry32(61);
   // platform ambience
   noise(buf, 0, C.duration, 0.05, 0, rng, { attack: 1, release: 2, lpFrom: 900 });
   // three-tone station chime before the announcement
-  [76, 72, 67].forEach((m, i) =>
-    tone(buf, C.chime + i * 0.38, mtof(m), 2.2, 0.12, 0, { attack: 0.003, release: 1, decay: 1.6, harmonics: [1, 0, 0.35, 0, 0.12] }),
-  );
+  if (!omit.includes("chime"))
+    [76, 72, 67].forEach((m, i) =>
+      tone(buf, C.chime + i * 0.38, mtof(m), 2.2, 0.12, 0, { attack: 0.003, release: 1, decay: 1.6, harmonics: [1, 0, 0.35, 0, 0.12] }),
+    );
   // electric locomotive horn
   const horn = (t0: number, dur: number, amp: number) => {
     [330, 415.3].forEach((f, i) =>
       tone(buf, t0, f, dur, amp, i ? 0.4 : 0.2, { attack: 0.06, release: 0.2, harmonics: [1, 0.6, 0.45, 0.3, 0.2, 0.1], vibrato: 0.002 }),
     );
   };
-  horn(C.horn, 1.3, 0.07);
-  horn(C.horn + 1.7, 0.45, 0.08);
+  if (!omit.includes("horn")) {
+    horn(C.horn, 1.3, 0.07);
+    horn(C.horn + 1.7, 0.45, 0.08);
+  }
   // rail joints: clickety-clack, slowing as the train brakes
   let t = C.enter + 0.3;
   while (t < C.stop) {
@@ -676,7 +679,12 @@ function nikah2Sfx(): StereoBuffer {
 
 const cache = new Map<string, StereoBuffer>();
 const BEDS: Record<TemplateId, () => StereoBuffer> = { nikah: nikahBed, train: trainBed, nikah2: nikah2Bed, train2: train2Bed };
-const SFX: Record<TemplateId, () => StereoBuffer> = { nikah: nikahSfx, train: trainSfx, nikah2: nikah2Sfx, train2: train2Sfx };
+const SFX: Record<TemplateId, (omit: string[]) => StereoBuffer> = {
+  nikah: nikahSfx,
+  train: trainSfx,
+  nikah2: nikah2Sfx,
+  train2: train2Sfx,
+};
 
 export function renderBed(template: TemplateId): StereoBuffer {
   const key = `bed:${template}`;
@@ -684,17 +692,18 @@ export function renderBed(template: TemplateId): StereoBuffer {
   return cache.get(key)!;
 }
 
-export function renderSfx(template: TemplateId): StereoBuffer {
-  const key = `sfx:${template}`;
-  if (!cache.has(key)) cache.set(key, SFX[template]());
+/** @param omit synthesized parts replaced by uploaded sounds (e.g. "horn") */
+export function renderSfx(template: TemplateId, omit: string[] = []): StereoBuffer {
+  const key = `sfx:${template}:${[...omit].sort().join(",")}`;
+  if (!cache.has(key)) cache.set(key, SFX[template](omit));
   return cache.get(key)!;
 }
 
 /** Bed (looped) + sfx mixed down to `seconds`, with a fade-out tail. Used for the MP4 soundtrack. */
-export function renderOpeningMix(template: TemplateId, seconds: number, includeBed = true, bedGain = 0.7): StereoBuffer {
+export function renderOpeningMix(template: TemplateId, seconds: number, includeBed = true, bedGain = 0.7, omit: string[] = []): StereoBuffer {
   const out = alloc(seconds);
   const bed = renderBed(template);
-  const sfx = renderSfx(template);
+  const sfx = renderSfx(template, omit);
   const n = out.left.length;
   const fade = Math.floor(1.2 * SR);
   for (let i = 0; i < n; i++) {

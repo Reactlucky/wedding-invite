@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState, type ComponentType } from "react";
 import { AudioEngine } from "@/lib/audio/engine";
+import { resolveSounds } from "@/lib/sounds";
 import { gsap } from "@/lib/gsap";
 import { useInvitation, useSyncMessages, type SyncMessage } from "@/lib/sync";
 import { paletteToCss } from "@/lib/themes";
@@ -48,10 +49,11 @@ export function InvitationExperience({ template, Gate, Opening, Invitation }: Pr
   const openingLayer = useRef<HTMLDivElement>(null);
 
   // Audio engine follows the chosen music; pre-renders the score in a worker
-  const musicKey = data ? `${data.music.src ?? "score"}|${data.music.volume}` : "";
+  const sounds = data ? resolveSounds(data, template) : null;
+  const musicKey = sounds ? JSON.stringify(sounds) : "";
   useEffect(() => {
     if (!data || !mode || mode.exportMode) return;
-    const e = new AudioEngine(template, data.music);
+    const e = new AudioEngine(template, resolveSounds(data, template));
     e.preload();
     engine.current = e;
     return () => {
@@ -64,7 +66,7 @@ export function InvitationExperience({ template, Gate, Opening, Invitation }: Pr
   const beginOpening = useCallback(() => {
     engine.current?.dispose();
     if (data && mode && !mode.exportMode) {
-      const e = new AudioEngine(template, data.music);
+      const e = new AudioEngine(template, resolveSounds(data, template));
       e.preload();
       engine.current = e;
       e.setMuted(muted);
