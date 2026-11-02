@@ -1,69 +1,67 @@
-import Image from "next/image";
+import Link from "next/link";
+
+const templates = [
+  {
+    href: "/nikah",
+    name: "Luxury Nikah",
+    blurb: "A mehrab gateway draws itself in gold, then lanterns descend and carved doors swing open into light.",
+    palette: ["#03201a", "#0a3b2c", "#c9a24a", "#f1d892"],
+    bg: "radial-gradient(90% 70% at 50% 100%, #0f5038, #03201a 70%)",
+    accent: "#f1d892",
+  },
+  {
+    href: "/train",
+    name: "Royal Train Journey",
+    blurb: "A steam locomotive comes out of the sunset fog, and your names flip onto the station's departure board.",
+    palette: ["#160a08", "#7a2e1a", "#c8963e", "#ffb35c"],
+    bg: "linear-gradient(to bottom, #160a08, #7a2e1a 60%, #ffb35c)",
+    accent: "#ffb35c",
+  },
+];
 
 export default function Home() {
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <main className="min-h-dvh bg-[#0b0a09] px-5 py-16 text-[#f5efe3] sm:px-10">
+      <div className="mx-auto max-w-5xl">
+        <p className="font-display text-[11px] tracking-[0.5em] text-[#c9a24a] uppercase">Ever After Studio</p>
+        <h1 className="mt-4 font-serif text-5xl font-light italic leading-tight sm:text-7xl">Cinematic wedding invitations</h1>
+        <p className="mt-5 max-w-2xl text-lg text-white/60">
+          Two original templates with animated openings, an original score, live countdown, events, maps, a gallery and RSVP. Edit
+          everything in the studio and export the opening as an MP4.
+        </p>
+        <div className="mt-8 flex flex-wrap gap-3">
+          <Link href="/editor" className="rounded-full bg-[#c9a24a] px-6 py-3 font-display text-xs tracking-[0.3em] text-black uppercase">
+            Open the editor
+          </Link>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+
+        <div className="mt-14 grid gap-6 md:grid-cols-2">
+          {templates.map((t) => (
+            <Link
+              key={t.href}
+              href={t.href}
+              className="group relative overflow-hidden rounded-3xl border border-white/10 p-8 transition duration-500 hover:-translate-y-1 hover:border-white/30"
+              style={{ background: t.bg, minHeight: 360 }}
+            >
+              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
+              <div className="relative flex h-full min-h-[300px] flex-col justify-end">
+                <div className="mb-4 flex gap-2">
+                  {t.palette.map((c) => (
+                    <span key={c} className="h-4 w-4 rounded-full border border-white/20" style={{ background: c }} />
+                  ))}
+                </div>
+                <h2 className="font-serif text-4xl italic" style={{ color: t.accent }}>
+                  {t.name}
+                </h2>
+                <p className="mt-3 text-white/75">{t.blurb}</p>
+                <p className="mt-6 font-display text-[11px] tracking-[0.35em] text-white/80 uppercase">
+                  Preview {t.href} <span className="inline-block transition group-hover:translate-x-1">→</span>
+                </p>
+              </div>
+            </Link>
+          ))}
         </div>
-      </main>
-    </div>
+      </div>
+    </main>
   );
 }

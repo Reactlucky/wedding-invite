@@ -1,36 +1,60 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Ever After Studio — cinematic wedding invitations
 
-## Getting Started
+Two original, fully animated invitation templates with an editor and MP4 export.
 
-First, run the development server:
+| Route | What it is |
+|---|---|
+| `/` | Template picker |
+| `/nikah` | **Luxury Nikah**: an emerald-and-gold mehrab gateway draws itself in gold, then lanterns descend, the Bismillah reveals right-to-left, carved doors swing open in 3D, the camera flies through the light and the couple's names are revealed |
+| `/train` | **Royal Train Journey**: a Three.js sunset station in fog. A steam locomotive (with your monogram) arrives toward the camera and the steam engulfs the screen. Names flip onto a split-flap departure board, then a dramatic date reveal and a stamped boarding ticket |
+| `/editor` | Studio: names, date, venue, events, photos, music, colour theme, live preview, MP4 export, RSVP inbox |
+
+URL flags: `?view=invitation` skips straight to the invitation, and `?preview=1` is used by the editor iframe. `?export=1` is the deterministic render mode used by the exporter.
+
+## Run
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+npm run dev          # http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+MP4 export needs **Google Chrome/Chromium** and **ffmpeg** on the server. Both are auto-detected; override them with `CHROME_PATH` / `FFMPEG_PATH`. Exporting uses the GPU by default. Set `EXPORT_SOFTWARE_GL=1` on GPU-less servers to force SwiftShader (slower).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Set `EDITOR_TOKEN=…` in production to protect saving, uploads, export and the RSVP list. The editor will prompt for it.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Architecture
 
-## Learn More
+```
+src/
+  app/                       routes + API (invitation, upload, media, rsvp, export)
+  lib/
+    cues.ts                  cue sheet (seconds) shared by animation and audio
+    audio/score.ts           original generative score + SFX, pure TS DSP (runs in browser worker and Node)
+    audio/engine.ts          Web Audio playback (looping bed + synced SFX, mute, custom tracks)
+    sync.ts                  data loading + BroadcastChannel live preview
+    themes.ts / defaults.ts  palettes and the default invitation
+  components/
+    shared/
+      InvitationExperience   gate → opening → invitation; skip, mute, replay
+      useCinematicTimeline   one GSAP master timeline per opening; exposes window.__opening.seek(t) in export mode
+      particles.ts           deterministic star / gold-dust / burst particles
+      Countdown, Sections (events, map), Gallery (+lightbox), RsvpForm, useReveal (ScrollTrigger)
+    nikah/                   SVG mehrab, doors, lanterns, girih patterns, opening, invitation
+    train/                   TrainScene.ts (Three.js), split-flap board, ticket, opening, invitation
+    editor/                  studio UI
+  server/
+    store.ts                 file-backed storage in .data/ (swap for a DB + object storage)
+    exporter.ts              headless Chrome frame capture → ffmpeg H.264/AAC
+```
 
-To learn more about Next.js, take a look at the following resources:
+**Why the export is frame-exact:** nothing in an opening uses its own clock. GSAP tweens, canvas particles, Three.js (train position, wheel rotation, steam puffs, camera shake), split-flap letters and lantern sway are all functions of the master timeline's time. The exporter loads `/<template>?export=1` at a phone-sized viewport with 2× pixel density, then seeks every 1/30s and screenshots. It pipes the frames into ffmpeg together with the score, rendered by the same DSP code in Node.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+**Music:** each template ships an original synthesized score (a Hijaz-mode oud, ney and daf for Nikah, and a strings-and-piano bed for Train). Sound effects are placed on the cue sheet: a chime, the door gong, a whoosh and a shimmer for Nikah; chuffs, the whistle, brakes, flaps, a boom and a bell for Train. An uploaded track replaces the score, and the sound effects still play on top.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+**Images:** photos are resized and re-encoded to WebP in the browser before upload, then served with immutable caching and lazy-loaded.
 
-## Deploy on Vercel
+## Production notes
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- `.data/` (invitation JSON, uploads, RSVPs, exports) must be on persistent disk. On serverless hosts, replace `server/store.ts` with a database and object storage, and run the exporter on a worker with Chrome and ffmpeg.
+- It's single-invitation for now. For multi-tenant use, key `store.ts` by a slug and add `/[slug]/nikah`-style routes.
+- Only upload music you have the rights to use.
