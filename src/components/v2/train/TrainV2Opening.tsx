@@ -33,7 +33,7 @@ export function Announcement({ a, b }: { a: string; b: string }) {
   );
 }
 
-export function TrainV2Opening({ data, exportMode, started, onComplete, holdAt, holdReleased, onHold }: OpeningProps<InvitationData>) {
+export function TrainV2Opening({ data, exportMode, started, onComplete, holdAt, continueAt, holdReleased, onHold }: OpeningProps<InvitationData>) {
   const root = useRef<HTMLDivElement>(null);
   const strip = useRef<HTMLDivElement>(null);
   const marquee = useRef<HTMLSpanElement | null>(null);
@@ -53,12 +53,15 @@ export function TrainV2Opening({ data, exportMode, started, onComplete, holdAt, 
     return () => ro.disconnect();
   }, []);
 
+  const layoutReady = size.split("x").every((n) => Number(n) > 0);
+
   useCinematicTimeline(root, {
     duration: C.duration,
     exportMode,
-    started,
+    started: started && layoutReady,
     onComplete,
     holdAt,
+    continueAt,
     holdReleased,
     onHold,
     deps: [size, a, b, data.date, data.city, palette.secondary, palette.accent],

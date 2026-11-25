@@ -12,6 +12,8 @@ export interface OpeningProps<D> {
   onComplete: () => void;
   /** Pause here until `holdReleased`, so a tap can continue the sequence. Ignored while exporting. */
   holdAt?: number;
+  /** On release, jump here before playing. Used so the doors open on the tap. */
+  continueAt?: number;
   holdReleased?: boolean;
   onHold?: () => void;
 }
@@ -29,6 +31,8 @@ interface Options {
   ready?: () => Promise<void>;
   /** Pause here until `holdReleased`. Ignored while exporting. */
   holdAt?: number;
+  /** On release, jump here before playing. */
+  continueAt?: number;
   holdReleased?: boolean;
   onHold?: () => void;
   /** rebuild when these change (e.g. names edited live in the editor) */
@@ -130,7 +134,10 @@ export function useCinematicTimeline(scope: RefObject<HTMLElement | null>, opts:
       tl.pause(0);
       return;
     }
-    if (opts.holdReleased || opts.holdAt == null) tl.play();
+    if (opts.holdReleased || opts.holdAt == null) {
+      if (opts.holdReleased && opts.continueAt != null && tl.time() < opts.continueAt - 0.02) tl.seek(opts.continueAt);
+      tl.play();
+    }
   }, [opts.started, opts.exportMode, opts.holdReleased, opts.holdAt]);
 
   return tlRef;

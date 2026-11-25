@@ -30,6 +30,8 @@ interface Props {
    * The guest taps to board, and the sequence continues from there.
    */
   holdAt?: number;
+  /** Seek here when the guest taps, so the doors open immediately. */
+  continueAt?: number;
 }
 
 type Phase = "loading" | "gate" | "opening" | "invite";
@@ -40,7 +42,7 @@ function readMode() {
   return { exportMode: q.get("export") === "1", preview: q.get("preview") === "1", view: q.get("view") };
 }
 
-export function InvitationExperience({ template, Gate, Opening, Invitation, holdAt }: Props) {
+export function InvitationExperience({ template, Gate, Opening, Invitation, holdAt, continueAt }: Props) {
   const { data } = useInvitation();
   // URL flags; pages are static shells so this is only known on the client.
   // Safe as lazy state: server and first client render both show the loading frame.
@@ -111,16 +113,23 @@ export function InvitationExperience({ template, Gate, Opening, Invitation, hold
   const onBoard = useCallback(() => {
     setAwaitingBoard(false);
     setHoldReleased(true);
-    const e = engine.current;
-    if (!e || !data || !mode || mode.exportMode) return;
-    const state = e.contextState();
-    if (state === "running" || state === "suspended") {
-      e.resume();
-      return;
+    if (!data || !mode || mode.exportMode) return;
+    let e = engine.current;
+    if (!e) {
+      e = new AudioEngine(template, resolveSounds(data, template));
+      e.preload();
+      engine.current = e;
     }
     e.setMuted(muted);
-    e.start({ offset: holdAt ?? 0, gesture: true }).catch(() => {});
-  }, [data, mode, muted, holdAt]);
+    // A clip that already started keeps going until the file ends. If autoplay
+    // blocked it, the tap starts the whole recording from the top.
+    if (!e.clipsStarted) e.armClips({ immediate: true });
+    e.resume();
+    const jump = continueAt != null && holdAt != null && continueAt > holdAt + 0.05;
+    if (jump) e.playScoreFrom(continueAt).catch(() => {});
+    else if (e.contextState() === "running" || e.contextState() === "suspended") e.resume();
+    else e.start({ offset: holdAt ?? 0, gesture: true, withClips: false }).catch(() => {});
+  }, [data, mode, muted, holdAt, continueAt, template]);
 
   const finish = useCallback(
     (skipped: boolean) => {
@@ -176,7 +185,7 @@ export function InvitationExperience({ template, Gate, Opening, Invitation, hold
         }
       }
     },
-    [beginOpening],
+    [beginOpening, holdAt],
   );
   useSyncMessages(onSync);
 
@@ -207,6 +216,7 @@ export function InvitationExperience({ template, Gate, Opening, Invitation, hold
             started={phase === "opening" || leaving}
             onComplete={() => finish(false)}
             holdAt={mode.exportMode ? undefined : holdAt}
+            continueAt={mode.exportMode ? undefined : continueAt}
             holdReleased={holdReleased}
             onHold={onHold}
           />
@@ -219,7 +229,7 @@ export function InvitationExperience({ template, Gate, Opening, Invitation, hold
         <button
           type="button"
           onClick={onBoard}
-          className="board-pill font-v2-sans fixed bottom-[9%] left-1/2 z-50 -translate-x-1/2 rounded-full bg-white px-6 py-2.5 text-sm font-medium shadow-[0_8px_24px_-8px_rgba(0,0,0,.45)]"
+          className="board-pill font-v2-sans fixed left-1/2 z-50 rounded-full bg-white px-6 py-2.5 text-sm font-medium shadow-[0_8px_24px_-8px_rgba(0,0,0,.45)]"
           style={{ color: "#3a2a22", bottom: "max(9%, calc(env(safe-area-inset-bottom) + 4.5rem))" }}
         >
           Tap to board 🎟️
