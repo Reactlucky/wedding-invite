@@ -35,20 +35,6 @@ function renderInWorker(template: TemplateId, omit: string[]): Promise<Rendered>
   return renders.get(key)!;
 }
 
-const sampleCache = new Map<string, Promise<ArrayBuffer>>();
-function fetchSample(src: string) {
-  if (!sampleCache.has(src)) {
-    sampleCache.set(
-      src,
-      fetch(src).then((r) => {
-        if (!r.ok) throw new Error(`HTTP ${r.status}`);
-        return r.arrayBuffer();
-      }),
-    );
-  }
-  return sampleCache.get(src)!;
-}
-
 function toBuffer(ctx: AudioContext, sampleRate: number, [l, r]: [Float32Array, Float32Array]) {
   const b = ctx.createBuffer(2, l.length, sampleRate);
   b.copyToChannel(new Float32Array(l), 0);
@@ -68,14 +54,10 @@ export class AudioEngine {
   private bedSrc: AudioBufferSourceNode | null = null;
   private oneShots: AudioBufferSourceNode[] = [];
   private custom: HTMLAudioElement | null = null;
-  /**
-   * Uploaded one-shots live on their own context. Suspending or seeking the
-   * score must not cut the announcement off before the file ends.
-   */
-  private clipCtx: AudioContext | null = null;
-  private clipGain: GainNode | null = null;
-  private clipNodes: AudioBufferSourceNode[] = [];
-  private clipsArmed = false;
+  /** Uploaded clips, such as the announcement. Kept off the score clock so a pause cannot cut them off. */
+  private sampleEls: HTMLAudioElement[] = [];
+  private sampleTimers: number[] = [];
+  private samplesArmed = false;
   private scoreGen = 0;
   private muted = false;
 
@@ -87,7 +69,13 @@ export class AudioEngine {
   /** Start rendering/downloading early so playback begins instantly on tap. */
   preload() {
     renderInWorker(this.template, this.sounds.omit).catch(() => {});
-    this.sounds.samples.forEach((s) => fetchSample(s.src).catch(() => {}));
+    this.sounds.samples.forEach((s) => {
+      const audio = new Audio(s.src);
+      audio.preload = "auto";
+      audio.volume = 1;
+      audio.setAttribute("playsinline", "");
+      this.sampleEls.push(audio);
+    });
     const music = this.sounds.music;
     if (music.src) {
       this.custom = new Audio(music.src);
@@ -103,7 +91,7 @@ export class AudioEngine {
    * @param gesture true when called from a tap. Without one, browsers block
    * sound; the context is closed so a later tap can start it in sync.
    */
-  async start({ withSfx = true, offset = 0, gesture = false, withClips = true } = {}) {
+  async start({ withSfx = true, offset = 0, gesture = false } = {}) {
     if (this.ctx && this.ctx.state !== "closed") return;
     const Ctx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
     this.ctx = new Ctx();
@@ -115,7 +103,6 @@ export class AudioEngine {
       ctx.close().catch(() => {});
       return;
     }
-    if (withClips) this.armClips({ offset });
     const gen = ++this.scoreGen;
     const t0 = this.ctx.currentTime;
     this.master = this.ctx.createGain();
@@ -136,60 +123,38 @@ export class AudioEngine {
     await this.playScore(gen, offset, withSfx, t0);
   }
 
-  /** True once an uploaded clip, such as the announcement, has been started. */
-  get clipsStarted() {
-    return this.clipsArmed;
-  }
-
   /**
-   * Play uploaded one-shots on a context the score pause does not share.
-   * `immediate` starts them from the top on a tap, when autoplay blocked the arrival.
-   * They run to the end of the file.
+   * Play uploaded clips on their own elements so the score pause cannot cut them off.
+   * `immediate` is for a tap: start any clip that never got going, from the top.
+   * Call that form inside the tap so the browser allows sound.
    */
-  armClips({ offset = 0, immediate = false } = {}) {
-    if (this.clipsArmed) return;
-    this.clipsArmed = true;
-    const Ctx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-    this.clipCtx = new Ctx();
-    // Called from start() or the tap, both of which already hold audio permission.
-    this.clipCtx.resume().catch(() => {});
-    this.clipGain = this.clipCtx.createGain();
-    this.clipGain.gain.value = this.muted ? 0 : 1;
-    this.clipGain.connect(this.clipCtx.destination);
-    const t0 = this.clipCtx.currentTime;
-    for (const s of this.sounds.samples) {
-      const at = immediate ? 0 : s.at - offset;
-      if (at < -0.2) continue;
-      this.playClip(s.src, t0 + Math.max(0, at));
-    }
-  }
-
-  private async playClip(src: string, when: number) {
-    try {
-      const data = await fetchSample(src);
-      const ctx = this.clipCtx;
-      const gain = this.clipGain;
-      if (!ctx || !gain) return;
-      const buf = await ctx.decodeAudioData(data.slice(0));
-      if (this.clipCtx !== ctx || !this.clipGain) return;
-      const node = ctx.createBufferSource();
-      node.buffer = buf;
-      node.connect(gain);
-      const now = ctx.currentTime;
-      if (when >= now) node.start(when);
-      else if (now - when < buf.duration) node.start(now, now - when);
-      else return;
-      this.clipNodes.push(node);
-    } catch {
-      /* a missing or undecodable upload shouldn't break the opening */
-    }
+  playSamples({ immediate = false } = {}) {
+    this.sounds.samples.forEach((s, i) => {
+      const audio = this.sampleEls[i];
+      if (!audio) return;
+      const kick = () => {
+        if (!audio.paused && audio.currentTime > 0.25 && !audio.ended) return;
+        if (audio.ended || (immediate && audio.currentTime < 0.25)) {
+          try {
+            audio.currentTime = 0;
+          } catch {
+            /* metadata may not be in yet */
+          }
+        }
+        audio.muted = this.muted;
+        audio.play().catch(() => {});
+      };
+      if (immediate || s.at <= 0.05) kick();
+      else if (!this.samplesArmed) this.sampleTimers.push(window.setTimeout(kick, s.at * 1000));
+    });
+    this.samplesArmed = true;
   }
 
   /** Jump the synth score to `offset` without touching uploaded clips. */
   async playScoreFrom(offset: number) {
     this.stopScoreNodes();
     if (!this.ctx || this.ctx.state === "closed") {
-      await this.start({ offset, gesture: true, withClips: false });
+      await this.start({ offset, gesture: true });
       return;
     }
     if (this.ctx.state === "suspended") await this.ctx.resume().catch(() => {});
@@ -252,7 +217,6 @@ export class AudioEngine {
 
   resume() {
     if (this.ctx?.state === "suspended") this.ctx.resume().catch(() => {});
-    if (this.clipCtx?.state === "suspended") this.clipCtx.resume().catch(() => {});
     if (this.custom?.paused) this.custom.play().catch(() => {});
   }
 
@@ -276,22 +240,20 @@ export class AudioEngine {
     this.muted = m;
     if (this.master && this.ctx) this.master.gain.setTargetAtTime(m ? 0 : 1, this.ctx.currentTime, 0.08);
     if (this.custom) this.custom.muted = m;
-    if (this.clipGain && this.clipCtx) this.clipGain.gain.setTargetAtTime(m ? 0 : 1, this.clipCtx.currentTime, 0.08);
+    this.sampleEls.forEach((audio) => {
+      audio.muted = m;
+    });
   }
 
   private stopClips() {
-    this.clipNodes.forEach((n) => {
-      try {
-        n.stop();
-      } catch {
-        /* already stopped */
-      }
+    this.sampleTimers.forEach((id) => window.clearTimeout(id));
+    this.sampleTimers = [];
+    this.sampleEls.forEach((audio) => {
+      audio.pause();
+      audio.src = "";
     });
-    this.clipNodes = [];
-    this.clipCtx?.close().catch(() => {});
-    this.clipCtx = null;
-    this.clipGain = null;
-    this.clipsArmed = false;
+    this.sampleEls = [];
+    this.samplesArmed = false;
   }
 
   dispose() {

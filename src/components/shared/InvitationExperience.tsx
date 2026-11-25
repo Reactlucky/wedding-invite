@@ -80,12 +80,14 @@ export function InvitationExperience({ template, Gate, Opening, Invitation, hold
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [musicKey, mode, template]);
 
-  // Train arrival starts with the page. Sound starts too when the browser allows it.
+  // The announcement is its own audio element, started on its cue. A browser that
+  // blocks autoplay gets another play() from the tap, which is allowed to make sound.
   useEffect(() => {
     if (holdAt == null || !mode || mode.exportMode || mode.view === "invitation") return;
     const e = engine.current;
-    if (!e || e.contextState() === "running" || e.contextState() === "suspended") return;
+    if (!e) return;
     e.setMuted(mutedRef.current);
+    e.playSamples();
     e.start({ gesture: false }).catch(() => {});
   }, [holdAt, musicKey, mode]);
 
@@ -98,6 +100,7 @@ export function InvitationExperience({ template, Gate, Opening, Invitation, hold
       e.preload();
       engine.current = e;
       e.setMuted(muted);
+      e.playSamples();
       e.start({ gesture: true }).catch(() => {});
     }
     setLeaving(false);
@@ -121,14 +124,13 @@ export function InvitationExperience({ template, Gate, Opening, Invitation, hold
       engine.current = e;
     }
     e.setMuted(muted);
-    // A clip that already started keeps going until the file ends. If autoplay
-    // blocked it, the tap starts the whole recording from the top.
-    if (!e.clipsStarted) e.armClips({ immediate: true });
+    // Inside the tap, so a browser that blocked the arrival can start the recording.
+    e.playSamples({ immediate: true });
     e.resume();
     const jump = continueAt != null && holdAt != null && continueAt > holdAt + 0.05;
     if (jump) e.playScoreFrom(continueAt).catch(() => {});
     else if (e.contextState() === "running" || e.contextState() === "suspended") e.resume();
-    else e.start({ offset: holdAt ?? 0, gesture: true, withClips: false }).catch(() => {});
+    else e.start({ offset: holdAt ?? 0, gesture: true }).catch(() => {});
   }, [data, mode, muted, holdAt, continueAt, template]);
 
   const finish = useCallback(
