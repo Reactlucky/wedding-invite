@@ -191,10 +191,12 @@ function Timetable({ data }: { data: InvitationData }) {
                   <p className="font-v2-sans text-[11px] font-medium text-[#3a2a22]">{formatLongDate(when)}</p>
                 </div>
                 <dl data-reveal className="font-v2-sans mt-4 grid gap-2.5 text-sm">
-                  <div>
-                    <dt className="text-[9px] tracking-[0.25em] uppercase opacity-50">🕰 Timings</dt>
-                    <dd>{formatTime(when)}</dd>
-                  </div>
+                  {ev.time && (
+                    <div>
+                      <dt className="text-[9px] tracking-[0.25em] uppercase opacity-50">🕰 Timings</dt>
+                      <dd>{formatTime(when)}</dd>
+                    </div>
+                  )}
                   {ev.note && (
                     <div>
                       <dt className="text-[9px] tracking-[0.25em] uppercase opacity-50">👗 Notes</dt>
@@ -205,13 +207,13 @@ function Timetable({ data }: { data: InvitationData }) {
                     <dt className="text-[9px] tracking-[0.25em] uppercase opacity-50">📍 Venue</dt>
                     <dd>
                       {ev.venue}
-                      <span className="block text-xs opacity-60">{ev.address}</span>
+                      {ev.address && <span className="block text-xs opacity-60">{ev.address}</span>}
                     </dd>
                   </div>
                 </dl>
                 <a
                   data-reveal
-                  href={mapsDirectionsUrl(`${ev.venue}, ${ev.address}`)}
+                  href={mapsDirectionsUrl([ev.venue, ev.address].filter(Boolean).join(", "))}
                   target="_blank"
                   rel="noreferrer"
                   className="font-v2-sans mt-3 inline-block text-xs font-semibold underline underline-offset-4"
@@ -316,13 +318,13 @@ export function TrainV2Invitation({ data }: InvitationProps) {
           ].map(([n, f]) => (
             <div key={n} data-reveal>
               <p className="font-v2-serif text-2xl">{n}</p>
-              <p className="mt-1 text-xs opacity-60">{f}</p>
+              {f && <p className="mt-1 text-xs opacity-60">{f}</p>}
             </div>
           ))}
         </div>
       </section>
 
-      <DepartureBoard data={data} name={`${a.slice(0, 6)}-${b.slice(0, 6)} EXP`.toUpperCase()} />
+      <DepartureBoard data={data} name={`${a.slice(0, 6).trim()}-${b.slice(0, 6).trim()} EXP`.toUpperCase()} />
       <RouteStory data={data} />
       <Timetable data={data} />
       <WindowGallery data={data} />

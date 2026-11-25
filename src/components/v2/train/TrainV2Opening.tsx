@@ -17,7 +17,7 @@ const DOOR_X = 23 / 400; // door centre within a car
 
 export function stationTexts(data: InvitationData) {
   const [a, b] = orderedNames(data);
-  const name = `${a.slice(0, 6)}-${b.slice(0, 6)} EXP`.toUpperCase();
+  const name = `${a.slice(0, 6).trim()}-${b.slice(0, 6).trim()} EXP`.toUpperCase();
   const marquee = `ARRIVING ON PLATFORM 1  ·  ${a.toUpperCase()} & ${b.toUpperCase()}  ·  ON TIME  ·  ${data.city.toUpperCase()} JN.  ·`;
   return { a, b, name, marquee };
 }
@@ -25,8 +25,8 @@ export function stationTexts(data: InvitationData) {
 export function Announcement({ a, b }: { a: string; b: string }) {
   return (
     <div className="st-ann" style={{ color: "#3a2a22" }}>
-      <p className="font-v2-hindi text-[clamp(17px,5vw,26px)] font-semibold">यात्रीगण कृपया ध्यान दें</p>
-      <p className="font-v2-sans mx-auto mt-1 max-w-[30ch] text-[clamp(11px,3.2vw,15px)] leading-relaxed opacity-75">
+      <p className="font-v2-hindi text-[clamp(15px,3.2vw,24px)] leading-tight font-semibold [@media(max-height:680px)]:text-[15px] [@media(max-height:440px)]:text-[13px]">यात्रीगण कृपया ध्यान दें</p>
+      <p className="font-v2-sans mx-auto mt-1 max-w-[92vw] text-[clamp(12px,2.1vw,15px)] leading-snug opacity-75 [@media(max-height:680px)]:mt-0.5 [@media(max-height:680px)]:text-[12.5px] [@media(max-height:680px)]:leading-tight [@media(max-height:440px)]:mt-0 [@media(max-height:440px)]:text-[11px]">
         Kind attention please. The {a} &amp; {b} Wedding Express will shortly arrive on platform 1.
       </p>
     </div>

@@ -161,15 +161,15 @@ export function Coach({
 export function StationLedBoard({ trainNo, name, marquee, manual = false }: { trainNo: string; name: string; marquee: string; manual?: boolean }) {
   return (
     <div className="relative mx-auto w-[min(92vw,520px)]">
-      <div className="absolute -top-[6vh] left-[18%] h-[6vh] w-[3px] bg-[#3b2a24]" />
-      <div className="absolute -top-[6vh] right-[18%] h-[6vh] w-[3px] bg-[#3b2a24]" />
-      <div className="led-panel overflow-hidden rounded-lg border-[3px] border-[#2a201c] px-3 py-2 shadow-[0_10px_25px_-10px_rgba(0,0,0,.6)]">
-        <div className="flex justify-between text-[clamp(11px,3.3vw,16px)]">
+      <div className="absolute -top-[clamp(14px,3.6vh,36px)] left-[18%] h-[clamp(14px,3.6vh,36px)] w-[3px] bg-[#3b2a24]" />
+      <div className="absolute -top-[clamp(14px,3.6vh,36px)] right-[18%] h-[clamp(14px,3.6vh,36px)] w-[3px] bg-[#3b2a24]" />
+      <div className="led-panel overflow-hidden rounded-lg border-[3px] border-[#2a201c] px-3 py-2 shadow-[0_10px_25px_-10px_rgba(0,0,0,.6)] [@media(max-height:680px)]:px-2.5 [@media(max-height:680px)]:py-1 [@media(max-height:440px)]:px-2 [@media(max-height:440px)]:py-0.5">
+        <div className="flex items-baseline justify-between gap-3 text-[clamp(11px,2.8vw,16px)] leading-none [@media(max-height:680px)]:text-[12px] [@media(max-height:440px)]:text-[11px]">
           <Led text={trainNo} />
-          <Led text={name} />
-          <Led text="PF 1" />
+          <Led text={name} className="min-w-0 truncate text-center" />
+          <Led text="PF 1" className="shrink-0" />
         </div>
-        <div className="mt-1 text-[clamp(10px,2.9vw,14px)]">
+        <div className="mt-0.5 text-[clamp(10px,2.4vw,14px)] leading-none [@media(max-height:680px)]:text-[11px] [@media(max-height:440px)]:mt-0 [@media(max-height:440px)]:text-[10px]">
           {manual ? (
             <span className="relative block overflow-hidden whitespace-nowrap">
               <span className="v2-marquee led inline-block">
@@ -208,27 +208,37 @@ export function StationScene({
       <div className="absolute inset-x-0 top-0 h-[7%]" style={{ background: "repeating-linear-gradient(90deg, #3b2620 0 14px, #33201b 14px 16px)" }} />
       <div className="absolute inset-x-0 top-[7%] h-[6px] bg-[#2a1914]" />
 
-      <div className="absolute inset-x-0 top-[13%] flex flex-col items-center px-4">
+      <div className="absolute inset-x-0 top-[calc(7%+0.85rem)] z-10 flex flex-col items-center px-3 [@media(max-height:680px)]:top-[calc(7%+0.4rem)]">
         {board}
-        <div className="mt-[4.5vh] text-center">{announcement}</div>
+        <div className="mt-[clamp(0.25rem,1.4vh,0.9rem)] w-full max-w-[46rem] px-2 text-center [@media(max-height:680px)]:mt-1 [@media(max-height:440px)]:mt-0.5">{announcement}</div>
       </div>
 
-      {/* canopy beam, pillars, city nameboard */}
-      <div className="absolute inset-x-0 top-[37.5%] h-[2.4%] bg-[#3b2620]" />
-      {[6, 34, 66, 94].map((x) => (
-        <div key={x} className="absolute top-[37.5%] h-[31.5%] w-[1.6%] min-w-[6px] -translate-x-1/2 bg-[#4a3029]" style={{ left: `${x}%` }} />
-      ))}
-      <div className="absolute left-1/2 top-[39.9%] -translate-x-1/2">
-        <div className="mx-auto flex w-max justify-between gap-[clamp(60px,18vw,120px)]">
-          <span className="h-[1.4vh] w-[3px] bg-[#3b2a24]" />
-          <span className="h-[1.4vh] w-[3px] bg-[#3b2a24]" />
-        </div>
-        <div
-          className="rounded-md border-2 border-[#3a2a22] px-[clamp(14px,5vw,28px)] py-1 text-center shadow-[0_6px_14px_-6px_rgba(0,0,0,.5)]"
-          style={{ background: "var(--c-accent)" }}
-        >
-          <p className="font-v2-sans text-[clamp(8px,2.2vw,11px)] font-semibold tracking-[0.25em] text-[#3a2a22] uppercase">Welcome to</p>
-          <p className="font-v2-sans whitespace-nowrap text-[clamp(15px,4.6vw,24px)] font-bold tracking-[0.08em] text-[#2b1f1a] uppercase">{city} Jn.</p>
+      {/* pillars drop from the nameboard to the platform, behind the train */}
+      <div
+        className="pointer-events-none absolute inset-x-0 bottom-0"
+        style={{ height: "calc(32% + min(20dvh, 50vw) + 18px + 4.5rem)" }}
+        aria-hidden
+      >
+        {[6, 34, 66, 94].map((x) => (
+          <div key={x} className="absolute top-0 h-full w-[1.6%] min-w-[6px] -translate-x-1/2 bg-[#4a3029]" style={{ left: `${x}%` }} />
+        ))}
+      </div>
+
+      {/* nameboard hangs just above the train, so it clears both the announcement and the coaches */}
+      <div className="absolute inset-x-0 z-20" style={{ bottom: "calc(32% + min(20dvh, 50vw) + 18px)" }}>
+        <div className="h-2 w-full bg-[#3b2620] [@media(max-height:560px)]:h-1.5" />
+        <div className="flex flex-col items-center">
+          <div className="flex w-max max-w-[90vw] justify-between gap-[clamp(40px,14vw,120px)]">
+            <span className="h-[clamp(8px,1.4vh,14px)] w-[3px] bg-[#3b2a24]" />
+            <span className="h-[clamp(8px,1.4vh,14px)] w-[3px] bg-[#3b2a24]" />
+          </div>
+          <div
+            className="max-w-[90vw] rounded-md border-2 border-[#3a2a22] px-[clamp(12px,4vw,28px)] py-1 text-center shadow-[0_6px_14px_-6px_rgba(0,0,0,.5)] [@media(max-height:560px)]:py-0.5"
+            style={{ background: "var(--c-accent)" }}
+          >
+            <p className="font-v2-sans text-[clamp(8px,2vw,11px)] font-semibold tracking-[0.16em] text-[#3a2a22] uppercase sm:tracking-[0.25em] [@media(max-height:440px)]:text-[8px]">Welcome to</p>
+            <p className="font-v2-sans max-w-[84vw] text-[clamp(13px,3.6vw,22px)] leading-tight font-bold tracking-[0.06em] text-[#2b1f1a] uppercase [@media(max-height:440px)]:text-[13px]">{city} Jn.</p>
+          </div>
         </div>
       </div>
 
