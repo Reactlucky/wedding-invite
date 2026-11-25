@@ -7,9 +7,13 @@ export interface OpeningProps<D> {
   data: D;
   /** deterministic frame-by-frame rendering for MP4 export */
   exportMode: boolean;
-  /** true once the guest has tapped "open" */
+  /** true while the opening timeline should advance */
   started: boolean;
   onComplete: () => void;
+  /** Pause here until `holdReleased`, so a tap can continue the sequence. Ignored while exporting. */
+  holdAt?: number;
+  holdReleased?: boolean;
+  onHold?: () => void;
 }
 
 interface Options {
@@ -23,6 +27,10 @@ interface Options {
   render?: (t: number) => void;
   /** resolves when heavy assets (3D scene, images) are ready for export */
   ready?: () => Promise<void>;
+  /** Pause here until `holdReleased`. Ignored while exporting. */
+  holdAt?: number;
+  holdReleased?: boolean;
+  onHold?: () => void;
   /** rebuild when these change (e.g. names edited live in the editor) */
   deps: unknown[];
 }
@@ -46,6 +54,7 @@ export function useCinematicTimeline(scope: RefObject<HTMLElement | null>, opts:
     optsRef.current = opts;
   });
   const resumeAt = useRef(0);
+  const heldNotice = useRef(false);
 
   useGSAP(
     () => {
@@ -86,7 +95,22 @@ export function useCinematicTimeline(scope: RefObject<HTMLElement | null>, opts:
 
       tl.seek(resumeAt.current, true);
       render();
-      if (optsRef.current.started) tl.play();
+      const held = o.holdAt != null && !o.holdReleased && resumeAt.current >= o.holdAt - 0.001;
+      heldNotice.current = held;
+      if (optsRef.current.started && !held) tl.play();
+      else if (held && o.holdAt != null) {
+        tl.pause(o.holdAt);
+        o.onHold?.();
+      }
+      tl.eventCallback("onUpdate", () => {
+        const live = optsRef.current;
+        if (live.holdAt == null || live.holdReleased || heldNotice.current) return;
+        if (tl.time() < live.holdAt) return;
+        heldNotice.current = true;
+        tl.pause(live.holdAt);
+        live.render?.(live.holdAt);
+        live.onHold?.();
+      });
       gsap.ticker.add(render);
       return () => {
         resumeAt.current = tl.time();
@@ -99,12 +123,15 @@ export function useCinematicTimeline(scope: RefObject<HTMLElement | null>, opts:
 
   useEffect(() => {
     if (opts.exportMode) return;
-    if (opts.started) tlRef.current?.play();
-    else {
+    const tl = tlRef.current;
+    if (!tl) return;
+    if (!opts.started) {
       resumeAt.current = 0;
-      tlRef.current?.pause(0);
+      tl.pause(0);
+      return;
     }
-  }, [opts.started, opts.exportMode]);
+    if (opts.holdReleased || opts.holdAt == null) tl.play();
+  }, [opts.started, opts.exportMode, opts.holdReleased, opts.holdAt]);
 
   return tlRef;
 }

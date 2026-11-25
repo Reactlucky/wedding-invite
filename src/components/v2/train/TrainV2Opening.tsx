@@ -33,7 +33,7 @@ export function Announcement({ a, b }: { a: string; b: string }) {
   );
 }
 
-export function TrainV2Opening({ data, exportMode, started, onComplete }: OpeningProps<InvitationData>) {
+export function TrainV2Opening({ data, exportMode, started, onComplete, holdAt, holdReleased, onHold }: OpeningProps<InvitationData>) {
   const root = useRef<HTMLDivElement>(null);
   const strip = useRef<HTMLDivElement>(null);
   const marquee = useRef<HTMLSpanElement | null>(null);
@@ -58,6 +58,9 @@ export function TrainV2Opening({ data, exportMode, started, onComplete }: Openin
     exportMode,
     started,
     onComplete,
+    holdAt,
+    holdReleased,
+    onHold,
     deps: [size, a, b, data.date, data.city, palette.secondary, palette.accent],
     build: (tl) => {
       if (!size || !root.current) return;

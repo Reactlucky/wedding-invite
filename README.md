@@ -65,3 +65,4 @@ src/
 ## Versions
 
 `v1` is a git tag holding the original two templates. The v2 templates were added alongside them and don't change any v1 route or visual. All four templates share the editor, data, RSVP inbox and MP4 export. Pick the template at the top of the editor; each one has its own colour theme.
+# wedding-invite

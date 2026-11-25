@@ -25,6 +25,11 @@ interface Props {
   Gate: ComponentType<GateProps>;
   Opening: ComponentType<OpeningProps<InvitationData>>;
   Invitation: ComponentType<InvitationProps>;
+  /**
+   * When set, the opening plays on load and pauses at this time (seconds).
+   * The guest taps to board, and the sequence continues from there.
+   */
+  holdAt?: number;
 }
 
 type Phase = "loading" | "gate" | "opening" | "invite";
@@ -35,15 +40,25 @@ function readMode() {
   return { exportMode: q.get("export") === "1", preview: q.get("preview") === "1", view: q.get("view") };
 }
 
-export function InvitationExperience({ template, Gate, Opening, Invitation }: Props) {
+export function InvitationExperience({ template, Gate, Opening, Invitation, holdAt }: Props) {
   const { data } = useInvitation();
   // URL flags; pages are static shells so this is only known on the client.
   // Safe as lazy state: server and first client render both show the loading frame.
   const [mode] = useState(readMode);
-  const [phase, setPhase] = useState<Phase>(() => (!mode ? "loading" : mode.exportMode ? "opening" : mode.view === "invitation" ? "invite" : "gate"));
+  const [phase, setPhase] = useState<Phase>(() => {
+    if (!mode) return "loading";
+    if (mode.exportMode) return "opening";
+    if (mode.view === "invitation") return "invite";
+    if (holdAt != null) return "opening";
+    return "gate";
+  });
   const [run, setRun] = useState(0);
   const [leaving, setLeaving] = useState(false);
   const [muted, setMuted] = useState(false);
+  const [awaitingBoard, setAwaitingBoard] = useState(false);
+  const [holdReleased, setHoldReleased] = useState(false);
+  const mutedRef = useRef(muted);
+  mutedRef.current = muted;
 
   const engine = useRef<AudioEngine | null>(null);
   const openingLayer = useRef<HTMLDivElement>(null);
@@ -63,19 +78,49 @@ export function InvitationExperience({ template, Gate, Opening, Invitation }: Pr
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [musicKey, mode, template]);
 
+  // Train arrival starts with the page. Sound starts too when the browser allows it.
+  useEffect(() => {
+    if (holdAt == null || !mode || mode.exportMode || mode.view === "invitation") return;
+    const e = engine.current;
+    if (!e || e.contextState() === "running" || e.contextState() === "suspended") return;
+    e.setMuted(mutedRef.current);
+    e.start({ gesture: false }).catch(() => {});
+  }, [holdAt, musicKey, mode]);
+
   const beginOpening = useCallback(() => {
+    setHoldReleased(false);
+    setAwaitingBoard(false);
     engine.current?.dispose();
     if (data && mode && !mode.exportMode) {
       const e = new AudioEngine(template, resolveSounds(data, template));
       e.preload();
       engine.current = e;
       e.setMuted(muted);
-      e.start().catch(() => {});
+      e.start({ gesture: true }).catch(() => {});
     }
     setLeaving(false);
     setRun((r) => r + 1);
     setPhase("opening");
   }, [data, mode, template, muted]);
+
+  const onHold = useCallback(() => {
+    setAwaitingBoard(true);
+    engine.current?.suspend();
+  }, []);
+
+  const onBoard = useCallback(() => {
+    setAwaitingBoard(false);
+    setHoldReleased(true);
+    const e = engine.current;
+    if (!e || !data || !mode || mode.exportMode) return;
+    const state = e.contextState();
+    if (state === "running" || state === "suspended") {
+      e.resume();
+      return;
+    }
+    e.setMuted(muted);
+    e.start({ offset: holdAt ?? 0, gesture: true }).catch(() => {});
+  }, [data, mode, muted, holdAt]);
 
   const finish = useCallback(
     (skipped: boolean) => {
@@ -123,6 +168,8 @@ export function InvitationExperience({ template, Gate, Opening, Invitation }: Pr
         if (msg.view === "invitation") {
           setLeaving(false);
           setPhase("invite");
+        } else if (holdAt != null) {
+          beginOpening();
         } else {
           engine.current?.dispose();
           setPhase("gate");
@@ -159,11 +206,26 @@ export function InvitationExperience({ template, Gate, Opening, Invitation }: Pr
             exportMode={mode.exportMode}
             started={phase === "opening" || leaving}
             onComplete={() => finish(false)}
+            holdAt={mode.exportMode ? undefined : holdAt}
+            holdReleased={holdReleased}
+            onHold={onHold}
           />
         </div>
       )}
 
       {phase === "gate" && <Gate data={data} onOpen={beginOpening} />}
+
+      {awaitingBoard && !holdReleased && phase === "opening" && !leaving && (
+        <button
+          type="button"
+          onClick={onBoard}
+          className="board-pill font-v2-sans fixed bottom-[9%] left-1/2 z-50 -translate-x-1/2 rounded-full bg-white px-6 py-2.5 text-sm font-medium shadow-[0_8px_24px_-8px_rgba(0,0,0,.45)]"
+          style={{ color: "#3a2a22", bottom: "max(9%, calc(env(safe-area-inset-bottom) + 4.5rem))" }}
+        >
+          Tap to board 🎟️
+          <style>{`@keyframes board-in{from{opacity:0;transform:translateX(-50%) translateY(14px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}.board-pill{animation:board-in .45s ease both, board-pulse .9s ease-in-out 1s infinite alternate}@keyframes board-pulse{from{transform:translateX(-50%) scale(1)}to{transform:translateX(-50%) scale(1.05)}}`}</style>
+        </button>
+      )}
 
       {!mode.exportMode && phase !== "gate" && <MuteButton muted={muted} onToggle={toggleMute} />}
       {!mode.exportMode && phase === "opening" && !leaving && <SkipButton onSkip={() => finish(true)} />}

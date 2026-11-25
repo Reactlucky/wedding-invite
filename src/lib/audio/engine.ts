@@ -88,11 +88,24 @@ export class AudioEngine {
     }
   }
 
-  async start({ withSfx = true } = {}) {
+  /**
+   * @param offset seconds into the score. Used when playback starts late so the
+   * door and the remaining effects still line up with the picture.
+   * @param gesture true when called from a tap. Without one, browsers block
+   * sound; the context is closed so a later tap can start it in sync.
+   */
+  async start({ withSfx = true, offset = 0, gesture = false } = {}) {
+    if (this.ctx && this.ctx.state !== "closed") return;
     const Ctx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
     this.ctx = new Ctx();
     // Resume synchronously inside the gesture; awaiting the render first would lose it on iOS.
     const resumed = this.ctx.resume();
+    if (!gesture && this.ctx.state !== "running") {
+      const ctx = this.ctx;
+      this.ctx = null;
+      ctx.close().catch(() => {});
+      return;
+    }
     const t0 = this.ctx.currentTime;
     this.master = this.ctx.createGain();
     this.master.gain.value = this.muted ? 0 : 1;
@@ -101,9 +114,19 @@ export class AudioEngine {
     this.sfxGain.connect(this.master);
     if (this.custom) {
       this.custom.muted = this.muted;
+      try {
+        this.custom.currentTime = offset;
+      } catch {
+        /* metadata may not be in yet; playback still starts at the beginning */
+      }
       this.custom.play().catch(() => {});
     }
-    if (withSfx) this.sounds.samples.forEach((s) => this.scheduleSample(s.src, t0 + s.at));
+    if (withSfx) {
+      this.sounds.samples.forEach((s) => {
+        const at = s.at - offset;
+        if (at >= -0.05) this.scheduleSample(s.src, t0 + Math.max(0, at));
+      });
+    }
     await resumed;
     const r = await renderInWorker(this.template, this.sounds.omit);
     if (!this.ctx) return;
@@ -120,13 +143,31 @@ export class AudioEngine {
     }
     if (withSfx && this.sfxGain) {
       const src = this.ctx.createBufferSource();
-      src.buffer = toBuffer(this.ctx, r.sampleRate, r.sfx);
+      const buffer = toBuffer(this.ctx, r.sampleRate, r.sfx);
+      src.buffer = buffer;
       src.connect(this.sfxGain);
       // keep the synth SFX aligned with the timeline even if the render finished late
-      const offset = Math.max(0, now - t0);
-      src.start(now, offset);
-      this.oneShots.push(src);
+      const into = offset + Math.max(0, now - t0);
+      if (into < buffer.duration - 0.05) {
+        src.start(now, into);
+        this.oneShots.push(src);
+      }
     }
+  }
+
+  contextState(): AudioContextState | "closed" {
+    return this.ctx?.state ?? "closed";
+  }
+
+  /** Freeze the score with the picture while the guest decides to board. */
+  suspend() {
+    if (this.ctx?.state === "running") this.ctx.suspend().catch(() => {});
+    if (this.custom && !this.custom.paused) this.custom.pause();
+  }
+
+  resume() {
+    if (this.ctx?.state === "suspended") this.ctx.resume().catch(() => {});
+    if (this.custom?.paused) this.custom.play().catch(() => {});
   }
 
   private async scheduleSample(src: string, when: number) {
