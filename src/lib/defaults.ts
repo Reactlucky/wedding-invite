@@ -3,12 +3,12 @@ import { TEMPLATES, type InvitationData } from "./types";
 
 export const DEFAULT_INVITATION: InvitationData = {
   bride: "Sana",
-  groom: "Tofik Shaikh",
+  groom: "Tofik",
   nameOrder: "groom-first",
   brideFamily: "",
   groomFamily: "",
   date: "2027-01-07T21:00",
-  venue: "Viramgam Jn.",
+  venue: "Sahil Park",
   address: "Viramgam",
   city: "Viramgam",
   message: "With the blessings of our families, we invite you to celebrate the wedding of Tofik and Sana.",
