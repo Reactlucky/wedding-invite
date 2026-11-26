@@ -255,9 +255,9 @@ function WindowGallery({ data }: { data: InvitationData }) {
         ))}
       </div>
       <div className="mx-auto mt-1 h-2 w-full" style={{ background: "repeating-linear-gradient(90deg, #8b6e5a 0 6px, transparent 6px 16px)" }} />
-      <p className="font-v2-sans mt-4 text-center text-[10px] tracking-[0.3em] uppercase opacity-60">
-        {photos.length ? "Swipe through the coaches →" : "Add photos in the editor to fill these windows"}
-      </p>
+      {photos.length > 0 && (
+        <p className="font-v2-sans mt-4 text-center text-[10px] tracking-[0.3em] uppercase opacity-60">Swipe through the coaches →</p>
+      )}
       {open !== null && photos[open] && (
         <Lightbox index={open} count={photos.length} onIndex={setOpen} onClose={() => setOpen(null)}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
