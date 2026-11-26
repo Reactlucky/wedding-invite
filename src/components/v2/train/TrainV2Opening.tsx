@@ -12,7 +12,8 @@ import { Coach, Locomotive, StationLedBoard, StationScene, WHEEL_R } from "./art
 import { TrainV2Hero } from "./TrainV2Hero";
 
 const CAR_RATIO = 400 / 120;
-const DOOR_CAR = 3; // loco, S1, S2, [B1] ← this coach's door opens
+const COACHES = ["S1", "S2", "S3", "S4", "S5", "B1", "B2", "B3"];
+const DOOR_CAR = 6; // loco, S1–S5, [B1] ← this coach's door opens
 const DOOR_X = 23 / 400; // door centre within a car
 
 export function stationTexts(data: InvitationData) {
@@ -145,7 +146,7 @@ export function TrainV2Opening({ data, exportMode, started, onComplete, holdAt, 
                 {/* headlight spill ahead of the engine */}
                 <div className="pointer-events-none absolute -left-[14%] top-[40%] h-[60%] w-[30%]" style={{ background: "radial-gradient(closest-side, rgba(255,246,205,.9), rgba(255,236,170,.35) 55%, transparent)" }} />
                 <Locomotive label={`${a} & ${b}`.toUpperCase()} className="h-full w-auto shrink-0" style={{ aspectRatio: "400 / 120" }} />
-                {["S1", "S2", "B1", "B2", "B3"].map((n, i) => (
+                {COACHES.map((n, i) => (
                   <Coach
                     key={n}
                     number={n}

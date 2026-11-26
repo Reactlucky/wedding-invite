@@ -218,13 +218,19 @@ export function InvitationExperience({ template, Gate, Opening, Invitation, hold
 
   const palette = data.theme[template].palette;
   const showOpening = phase === "opening" || leaving;
+  // Once the train has stopped, tapping it (or anywhere on the platform) boards too.
+  const canBoard = awaitingBoard && !holdReleased && phase === "opening" && !leaving;
 
   return (
     <div style={paletteToCss(palette)} className="relative min-h-dvh bg-deep text-ink">
       {phase === "invite" && <Invitation data={data} template={template} />}
 
       {showOpening && (
-        <div ref={openingLayer} className="fixed inset-0 z-40 overflow-hidden bg-black">
+        <div
+          ref={openingLayer}
+          className={`fixed inset-0 z-40 overflow-hidden bg-black ${canBoard ? "cursor-pointer" : ""}`}
+          onClick={canBoard ? onBoard : undefined}
+        >
           <Opening
             key={run}
             data={data}
@@ -241,7 +247,7 @@ export function InvitationExperience({ template, Gate, Opening, Invitation, hold
 
       {phase === "gate" && <Gate data={data} onOpen={beginOpening} />}
 
-      {awaitingBoard && !holdReleased && phase === "opening" && !leaving && (
+      {canBoard && (
         <button
           type="button"
           onClick={onBoard}
