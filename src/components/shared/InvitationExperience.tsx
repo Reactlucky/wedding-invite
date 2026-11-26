@@ -51,7 +51,6 @@ export function InvitationExperience({ template, Gate, Opening, Invitation, hold
     if (!mode) return "loading";
     if (mode.exportMode) return "opening";
     if (mode.view === "invitation") return "invite";
-    if (holdAt != null) return "opening";
     return "gate";
   });
   const [run, setRun] = useState(0);
@@ -80,17 +79,8 @@ export function InvitationExperience({ template, Gate, Opening, Invitation, hold
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [musicKey, mode, template]);
 
-  // The announcement is its own audio element, started on its cue. A browser that
-  // blocks autoplay gets another play() from the tap, which is allowed to make sound.
-  useEffect(() => {
-    if (holdAt == null || !mode || mode.exportMode || mode.view === "invitation") return;
-    const e = engine.current;
-    if (!e) return;
-    e.setMuted(mutedRef.current);
-    e.playSamples();
-    e.start({ gesture: false }).catch(() => {});
-  }, [holdAt, musicKey, mode]);
-
+  // Called from the gate's tap, which is what lets the browser play the horn and
+  // the announcement during the arrival.
   const beginOpening = useCallback(() => {
     setHoldReleased(false);
     setAwaitingBoard(false);
@@ -100,6 +90,8 @@ export function InvitationExperience({ template, Gate, Opening, Invitation, hold
       e.preload();
       engine.current = e;
       e.setMuted(muted);
+      e.unlockSamples();
+      e.armInviteMusic();
       e.playSamples();
       e.start({ gesture: true }).catch(() => {});
     }
@@ -108,9 +100,19 @@ export function InvitationExperience({ template, Gate, Opening, Invitation, hold
     setPhase("opening");
   }, [data, mode, template, muted]);
 
+  // The train waits at the platform until the announcement has finished.
   const onHold = useCallback(() => {
-    setAwaitingBoard(true);
-    engine.current?.suspend();
+    const e = engine.current;
+    e?.suspend();
+    let shown = false;
+    const show = () => {
+      if (shown || engine.current !== e) return;
+      shown = true;
+      setAwaitingBoard(true);
+    };
+    if (e) e.samplesDone().then(show);
+    else show();
+    window.setTimeout(show, 15000);
   }, []);
 
   const onBoard = useCallback(() => {

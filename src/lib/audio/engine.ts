@@ -60,6 +60,8 @@ export class AudioEngine {
   private inviteToken = 0;
   /** Uploaded clips, such as the announcement. Kept off the score clock so a pause cannot cut them off. */
   private sampleEls: HTMLAudioElement[] = [];
+  private sampleState: ("idle" | "playing" | "done")[] = [];
+  private sampleWaiters: (() => void)[] = [];
   private sampleTimers: number[] = [];
   private samplesArmed = false;
   private scoreGen = 0;
@@ -73,12 +75,22 @@ export class AudioEngine {
   /** Start rendering/downloading early so playback begins instantly on tap. */
   preload() {
     renderInWorker(this.template, this.sounds.omit).catch(() => {});
-    this.sounds.samples.forEach((s) => {
+    this.sounds.samples.forEach((s, i) => {
       const audio = new Audio(s.src);
       audio.preload = "auto";
       audio.volume = 1;
       audio.setAttribute("playsinline", "");
+      const finish = () => {
+        if (this.sampleEls[i] !== audio || this.sampleState[i] !== "playing") return;
+        this.sampleState[i] = "done";
+        this.notifySamples();
+      };
+      audio.addEventListener("ended", finish);
+      audio.addEventListener("error", () => {
+        if (this.sampleState[i] === "playing") finish();
+      });
       this.sampleEls.push(audio);
+      this.sampleState.push("idle");
     });
     const music = this.sounds.music;
     if (music.src) {
@@ -181,30 +193,71 @@ export class AudioEngine {
   }
 
   /**
+   * Inside a tap: start each clip silently and pause it, so the browser lets it
+   * play with sound later on its cue (iOS requires this per element).
+   */
+  unlockSamples() {
+    this.sampleEls.forEach((audio, i) => {
+      if (this.sampleState[i] !== "idle") return;
+      audio.muted = true;
+      audio
+        .play()
+        .then(() => {
+          if (this.sampleState[i] !== "idle") return;
+          audio.pause();
+          try {
+            audio.currentTime = 0;
+          } catch {
+            /* metadata may not be in yet */
+          }
+        })
+        .catch(() => {})
+        .finally(() => {
+          if (this.sampleState[i] === "idle") audio.muted = this.muted;
+        });
+    });
+  }
+
+  /**
    * Play uploaded clips on their own elements so the score pause cannot cut them off.
-   * `immediate` is for a tap: start any clip that never got going, from the top.
-   * Call that form inside the tap so the browser allows sound.
+   * Each clip plays once, to the end. `immediate` starts any clip that has not played yet.
    */
   playSamples({ immediate = false } = {}) {
     this.sounds.samples.forEach((s, i) => {
       const audio = this.sampleEls[i];
       if (!audio) return;
       const kick = () => {
-        if (!audio.paused && audio.currentTime > 0.25 && !audio.ended) return;
-        if (audio.ended || (immediate && audio.currentTime < 0.25)) {
-          try {
-            audio.currentTime = 0;
-          } catch {
-            /* metadata may not be in yet */
-          }
+        if (this.sampleEls[i] !== audio || this.sampleState[i] !== "idle") return;
+        this.sampleState[i] = "playing";
+        try {
+          audio.currentTime = 0;
+        } catch {
+          /* metadata may not be in yet */
         }
         audio.muted = this.muted;
-        audio.play().catch(() => {});
+        audio.play().catch(() => {
+          if (this.sampleState[i] !== "playing") return;
+          this.sampleState[i] = "idle";
+          this.notifySamples(true);
+        });
       };
       if (immediate || s.at <= 0.05) kick();
       else if (!this.samplesArmed) this.sampleTimers.push(window.setTimeout(kick, s.at * 1000));
     });
     this.samplesArmed = true;
+  }
+
+  /** Resolves once every clip has played to the end, or could not play at all. */
+  samplesDone(): Promise<void> {
+    if (this.sampleState.every((s) => s === "done")) return Promise.resolve();
+    return new Promise((resolve) => this.sampleWaiters.push(resolve));
+  }
+
+  private notifySamples(failed = false) {
+    if (!failed && !this.sampleState.every((s) => s === "done")) return;
+    const waiters = this.sampleWaiters;
+    this.sampleWaiters = [];
+    waiters.forEach((w) => w());
   }
 
   /** Jump the synth score to `offset` without touching uploaded clips. */
@@ -311,7 +364,9 @@ export class AudioEngine {
       audio.src = "";
     });
     this.sampleEls = [];
+    this.sampleState = [];
     this.samplesArmed = false;
+    this.notifySamples(true);
   }
 
   dispose() {
