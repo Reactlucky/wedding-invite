@@ -126,6 +126,7 @@ export function InvitationExperience({ template, Gate, Opening, Invitation, hold
     e.setMuted(muted);
     // Inside the tap, so a browser that blocked the arrival can start the recording.
     e.playSamples({ immediate: true });
+    e.armInviteMusic();
     e.resume();
     const jump = continueAt != null && holdAt != null && continueAt > holdAt + 0.05;
     if (jump) e.playScoreFrom(continueAt).catch(() => {});
@@ -137,6 +138,7 @@ export function InvitationExperience({ template, Gate, Opening, Invitation, hold
     (skipped: boolean) => {
       if (mode?.exportMode) return;
       if (skipped) engine.current?.stopSfx();
+      engine.current?.playInviteMusic();
       setLeaving(true);
       setPhase("invite");
     },
@@ -171,6 +173,16 @@ export function InvitationExperience({ template, Gate, Opening, Invitation, hold
     document.documentElement.style.overflow = lock ? "hidden" : "";
     if (phase === "invite") window.scrollTo(0, 0);
   }, [phase]);
+
+  // The wedding track starts with the invitation and keeps looping. A direct
+  // visit that never got a tap can start it on the next touch.
+  useEffect(() => {
+    if (phase !== "invite" || mode?.exportMode) return;
+    const start = () => engine.current?.playInviteMusic();
+    start();
+    window.addEventListener("pointerdown", start);
+    return () => window.removeEventListener("pointerdown", start);
+  }, [phase, mode, musicKey]);
 
   const onSync = useCallback(
     (msg: SyncMessage) => {

@@ -23,6 +23,8 @@ const NO_BACKGROUND: TemplateId[] = ["train2"];
 
 export interface ResolvedSounds {
   music: MusicChoice;
+  /** Loops on the invitation page. The opening keeps its own horn, chime, and announcement. */
+  inviteMusic: MusicChoice | null;
   /** uploaded one-shot sounds with their start times */
   samples: { key: string; src: string; at: number }[];
   /** synthesized SFX parts to leave out because an upload replaces them */
@@ -35,7 +37,9 @@ export interface ResolvedSounds {
 export function resolveSounds(data: InvitationData, template: TemplateId): ResolvedSounds {
   const own = data.sounds?.[`${template}.music`];
   const quiet = NO_BACKGROUND.includes(template);
-  const music: MusicChoice = own ? { ...data.music, src: own.src, name: own.name } : quiet ? { ...data.music, src: null } : data.music;
+  // Train arrival has no music bed. A track uploaded for it plays later, on the invitation.
+  const music: MusicChoice = quiet ? { ...data.music, src: null } : own ? { ...data.music, src: own.src, name: own.name } : data.music;
+  const inviteMusic: MusicChoice | null = quiet && own?.src ? { ...data.music, src: own.src, name: own.name } : null;
   const samples: ResolvedSounds["samples"] = [];
   const omit: string[] = [];
   for (const slot of SOUND_SLOTS[template] ?? []) {
@@ -45,5 +49,5 @@ export function resolveSounds(data: InvitationData, template: TemplateId): Resol
       omit.push(slot.key);
     }
   }
-  return { music, samples, omit, bed: !quiet };
+  return { music, inviteMusic, samples, omit, bed: !quiet };
 }

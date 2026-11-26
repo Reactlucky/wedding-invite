@@ -55,6 +55,7 @@ export const DEFAULT_INVITATION: InvitationData = {
   music: { src: null, volume: 0.7 },
   sounds: {
     "train2.announce": { src: "/announcement.mp3", name: "Announcement" },
+    "train2.music": { src: "/wedding-music.mp3", name: "Wedding music" },
   },
   theme: {
     nikah: { preset: "emerald", palette: THEME_PRESETS.nikah[0].palette },

@@ -54,6 +54,10 @@ export class AudioEngine {
   private bedSrc: AudioBufferSourceNode | null = null;
   private oneShots: AudioBufferSourceNode[] = [];
   private custom: HTMLAudioElement | null = null;
+  /** Wedding track that loops on the invitation, not during the train arrival. */
+  private invite: HTMLAudioElement | null = null;
+  private inviteLive = false;
+  private inviteToken = 0;
   /** Uploaded clips, such as the announcement. Kept off the score clock so a pause cannot cut them off. */
   private sampleEls: HTMLAudioElement[] = [];
   private sampleTimers: number[] = [];
@@ -83,6 +87,59 @@ export class AudioEngine {
       this.custom.preload = "auto";
       this.custom.volume = music.volume;
     }
+    const bed = this.sounds.inviteMusic;
+    if (bed?.src) {
+      this.invite = new Audio(bed.src);
+      this.invite.loop = true;
+      this.invite.preload = "auto";
+      this.invite.volume = bed.volume;
+      this.invite.setAttribute("playsinline", "");
+    }
+  }
+
+  /**
+   * Unlock the invitation track inside a tap without letting it be heard yet.
+   * The arrival keeps the horn and announcement.
+   */
+  armInviteMusic() {
+    const audio = this.invite;
+    if (!audio || this.inviteLive || !audio.paused) return;
+    const token = this.inviteToken;
+    audio.muted = true;
+    const settle = () => {
+      if (this.inviteLive || token !== this.inviteToken) return;
+      audio.pause();
+      try {
+        audio.currentTime = 0;
+      } catch {
+        /* metadata may not be in yet */
+      }
+      audio.muted = this.muted;
+    };
+    const pending = audio.play();
+    if (pending) pending.then(settle).catch(() => {
+      if (!this.inviteLive) audio.muted = this.muted;
+    });
+  }
+
+  /** Loop the wedding track from the top. Safe to call again; a playing loop is left alone. */
+  playInviteMusic() {
+    const audio = this.invite;
+    if (!audio || this.inviteLive) return;
+    this.inviteLive = true;
+    this.inviteToken++;
+    audio.loop = true;
+    audio.muted = this.muted;
+    try {
+      audio.currentTime = 0;
+    } catch {
+      /* metadata may not be in yet */
+    }
+    audio.volume = this.sounds.inviteMusic?.volume ?? 0.7;
+    const pending = audio.play();
+    if (pending) pending.catch(() => {
+      this.inviteLive = false;
+    });
   }
 
   /**
@@ -240,6 +297,7 @@ export class AudioEngine {
     this.muted = m;
     if (this.master && this.ctx) this.master.gain.setTargetAtTime(m ? 0 : 1, this.ctx.currentTime, 0.08);
     if (this.custom) this.custom.muted = m;
+    if (this.invite) this.invite.muted = m;
     this.sampleEls.forEach((audio) => {
       audio.muted = m;
     });
@@ -262,6 +320,9 @@ export class AudioEngine {
     this.stopClips();
     this.custom?.pause();
     this.custom = null;
+    this.invite?.pause();
+    this.invite = null;
+    this.inviteLive = false;
     this.ctx?.close().catch(() => {});
     this.ctx = null;
   }
