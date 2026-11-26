@@ -44,7 +44,7 @@ export const DEFAULT_INVITATION: InvitationData = {
     {
       id: "reception",
       title: "Reception",
-      date: "2027-01-11",
+      date: "2027-01-10",
       time: "",
       venue: "Sahil Park",
       address: "Viramgam",
