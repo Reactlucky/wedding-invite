@@ -312,10 +312,16 @@ export function TrainV2Invitation({ data }: InvitationProps) {
           <PhotoCoach photos={[data.photos[0], data.photos[1]]} labels={[a.charAt(0), b.charAt(0)]} board={`1402 · ${a} ♥ ${b}`} number="A1" />
         </div>
         <div className="mx-auto mt-6 grid max-w-md grid-cols-2 gap-4">
-          {[
-            [data.bride, data.brideFamily],
-            [data.groom, data.groomFamily],
-          ].map(([n, f]) => (
+          {(data.nameOrder === "groom-first"
+            ? [
+                [data.groom, data.groomFamily],
+                [data.bride, data.brideFamily],
+              ]
+            : [
+                [data.bride, data.brideFamily],
+                [data.groom, data.groomFamily],
+              ]
+          ).map(([n, f]) => (
             <div key={n} data-reveal>
               <p className="font-v2-serif text-2xl">{n}</p>
               {f && <p className="mt-1 text-xs opacity-60">{f}</p>}
