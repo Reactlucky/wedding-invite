@@ -309,7 +309,7 @@ export function TrainV2Invitation({ data }: InvitationProps) {
       <section id="board" className="relative px-4 pb-16 pt-20 text-center">
         <V2Title eyebrow="Co-passengers" title="Two hearts, one ticket" />
         <div data-reveal className="mt-10 flex justify-center">
-          <PhotoCoach photos={[data.photos[0], data.photos[1]]} labels={[a.charAt(0), b.charAt(0)]} board={`1402 · ${a} ♥ ${b}`} number="A1" />
+          <PhotoCoach photos={[undefined, undefined]} labels={[a.charAt(0), b.charAt(0)]} board={`1402 · ${a} ♥ ${b}`} number="A1" />
         </div>
         <div className="mx-auto mt-6 grid max-w-md grid-cols-2 gap-4">
           {(data.nameOrder === "groom-first"

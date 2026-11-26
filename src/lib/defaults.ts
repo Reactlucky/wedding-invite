@@ -51,7 +51,14 @@ export const DEFAULT_INVITATION: InvitationData = {
       note: "Main reception",
     },
   ],
-  photos: [],
+  photos: [
+    { id: "diary-1", src: "/diary/scooter.png", width: 562, height: 532 },
+    { id: "diary-2", src: "/diary/walk.png", width: 666, height: 676 },
+    { id: "diary-3", src: "/diary/portrait.png", width: 536, height: 576 },
+    { id: "diary-4", src: "/diary/silhouette.png", width: 782, height: 610 },
+    { id: "diary-5", src: "/diary/bicycle.png", width: 430, height: 384 },
+    { id: "diary-6", src: "/diary/henna.png", width: 666, height: 760 },
+  ],
   music: { src: null, volume: 0.7 },
   sounds: {
     "train2.announce": { src: "/announcement.mp3", name: "Announcement" },
