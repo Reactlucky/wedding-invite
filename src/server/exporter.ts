@@ -22,6 +22,7 @@ export interface ExportJob {
   id: string;
   template: TemplateId;
   format: ExportFormat;
+  fps: number;
   status: "queued" | "rendering" | "encoding" | "done" | "error";
   /** 0..1 */
   progress: number;
@@ -30,8 +31,6 @@ export interface ExportJob {
   file?: string;
   createdAt: number;
 }
-
-const FPS = 30;
 
 // Survive dev hot-reloads
 const g = globalThis as unknown as { __exportJobs?: Map<string, ExportJob>; __exportChain?: Promise<unknown> };
@@ -57,8 +56,8 @@ function chromePath(): string {
   return found;
 }
 
-export function startExport(origin: string, template: TemplateId, format: ExportFormat): ExportJob {
-  const job: ExportJob = { id: randomUUID(), template, format, status: "queued", progress: 0, createdAt: Date.now() };
+export function startExport(origin: string, template: TemplateId, format: ExportFormat, fps = 30): ExportJob {
+  const job: ExportJob = { id: randomUUID(), template, format, fps, status: "queued", progress: 0, createdAt: Date.now() };
   jobs.set(job.id, job);
   pruneJobs();
   // One export at a time: headless WebGL rendering is CPU-heavy.
@@ -82,6 +81,7 @@ function pruneJobs() {
 
 async function run(job: ExportJob, origin: string) {
   job.status = "rendering";
+  const FPS = job.fps;
   const { width, height } = FORMATS[job.format];
   const workDir = path.join(EXPORT_DIR, job.id);
   await mkdir(workDir, { recursive: true });
@@ -164,8 +164,20 @@ async function run(job: ExportJob, origin: string) {
       ffmpeg.on("close", (code) => (code === 0 ? resolve() : reject(new Error(`ffmpeg exited ${code}: ${stderr}`))));
     });
 
+    // CSS animations (LED marquees, pulses) run on the wall clock, so pin them to video time too or they jump between frames.
     for (let i = 0; i < total; i++) {
-      await page.evaluate((t) => (window as unknown as { __opening: { seek(t: number): void } }).__opening.seek(t), i / FPS);
+      await page.evaluate((t) => {
+        (window as unknown as { __opening: { seek(t: number): void } }).__opening.seek(t);
+        const seen = ((window as unknown as { __cssAnims?: WeakMap<Animation, number> }).__cssAnims ??= new WeakMap());
+        for (const a of document.getAnimations()) {
+          if (!seen.has(a)) {
+            a.pause();
+            seen.set(a, t * 1000 - (Number(a.currentTime) || 0));
+          }
+          a.currentTime = t * 1000 - seen.get(a)!;
+        }
+        return new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+      }, i / FPS);
       const frame = await page.screenshot({ type: "jpeg", quality: 92, optimizeForSpeed: true });
       if (!ffmpeg.stdin.write(frame)) await new Promise((r) => ffmpeg.stdin.once("drain", r));
       job.progress = (i + 1) / total;
