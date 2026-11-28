@@ -1,16 +1,16 @@
 import type { Metadata } from "next";
 import { V2Fonts } from "@/components/v2/V2Fonts";
-import { TrainV2Experience } from "@/components/v2/train/TrainV2Experience";
+import { NikahV2Experience } from "@/components/v2/nikah/NikahV2Experience";
 
 export const metadata: Metadata = {
-  title: "Wedding Express — Invitation",
-  description: "Kind attention please: you're invited aboard our Wedding Express.",
+  title: "Nikah Invitation",
+  description: "With the blessings of Allah, you are invited to our Nikah.",
 };
 
 export default function Home() {
   return (
     <V2Fonts>
-      <TrainV2Experience />
+      <NikahV2Experience />
     </V2Fonts>
   );
 }

@@ -5,7 +5,9 @@ const nextConfig: NextConfig = {
     return [
       { source: "/nikah", destination: "/", permanent: false },
       { source: "/train", destination: "/", permanent: false },
-      { source: "/v2/nikah", destination: "/", permanent: false },
+      // ?export=1 is how the MP4 exporter loads a template
+      { source: "/v2/nikah", missing: [{ type: "query", key: "export" }], destination: "/", permanent: false },
+      { source: "/v2/train", missing: [{ type: "query", key: "export" }], destination: "/", permanent: false },
       { source: "/editor", destination: "/", permanent: false },
     ];
   },
